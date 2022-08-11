@@ -1,0 +1,4 @@
+MSE NaN
+total_moving_Distance 0.003190392
+height_from_ground 0.1287737
+height_from_ground_error -0.003255844

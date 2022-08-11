@@ -1,0 +1,2 @@
+MSE NaN
+total_moving_Distance 0.01171428

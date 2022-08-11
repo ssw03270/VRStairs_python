@@ -1,0 +1,8 @@
+new :  > 0  : 때 올려주게함
+new2 : 내려가는중이 아니면 올려주게 한거
+
+t2 : new 의 발 움직임으로 pre (착지점 예측을 이용한 방식)  으로 블렌딩한거
+t4 : new 의 발 움직임으로 new 인데 아래 처럼 코드..
+                float upVelocity = (prePositions[3].y - prePositions[2].y) * 2 > Time.deltaTime/2 ? (prePositions[3].y - prePositions[2].y) * 2 : Time.deltaTime/2;
+                upVelocity = (upVelocity + preUpvelocity) / 2.0f;
+                transform.parent.position = Vector3.MoveTowards(transform.parent.position, transform.parent.position + Vector3.up * (otherFootTransform.parent.position.y - transform.parent.position.y), upVelocity);

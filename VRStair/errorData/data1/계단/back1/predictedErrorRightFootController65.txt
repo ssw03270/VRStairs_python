@@ -1,0 +1,12 @@
+0.02390368
+0.03395198
+0.04066184
+0.03653039
+0.03669716
+0.03268938
+0.02388771
+MSE 0.03261745
+total_moving_Distance 0.003971422
+height_from_ground 0.1249665
+height_from_ground_error 0.03294695
+height_from_ground_error2 0.03294695
