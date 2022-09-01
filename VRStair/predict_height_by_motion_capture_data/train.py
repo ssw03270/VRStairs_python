@@ -4,21 +4,7 @@ import torch.nn.functional as f
 import torch.optim as optim
 import numpy as np
 import random
-
-class MLP(nn.Module):
-    def __init__(self):
-        super(MLP, self).__init__()
-        self.fc1 = nn.Linear(20, 512)
-        self.fc2 = nn.Linear(512, 512)
-        self.fc3 = nn.Linear(512, 2)
-
-    def forward(self, x):
-        x = nn.functional.elu(self.fc1(x))
-        x = nn.functional.elu(self.fc2(x))
-        x = nn.functional.elu(self.fc3(x))
-
-        return x
-
+import network
 
 cuda = torch.device('cuda')
 
@@ -38,13 +24,23 @@ train_label = np.array([n[1] for n in tmp])
 input_batch = torch.tensor(train_data, dtype=torch.float32, requires_grad=True, device=cuda)
 target_batch = torch.tensor(train_label, dtype=torch.float32, device=cuda)
 
-model = MLP().cuda()
+model = network.MLP().cuda()
 criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
-for epoch in range(10000):
-    output = model(input_batch).cuda()
-    loss = criterion(output, target_batch)
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
+data_size = input_batch.shape[0]
+batch_size = 32
+batch_s = 0
+batch_e = batch_s + batch_size
+for epoch in range(50000):
+    output = model(input_batch[batch_s:batch_e]).cuda()
+    loss = criterion(output, target_batch[batch_s:batch_e])
+
+    batch_s += batch_size
+    batch_e += batch_size
+    if batch_e > data_size:
+        batch_s = 0
+        batch_e = batch_s + batch_size
     print('Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.6f}'.format(loss))
     optimizer.zero_grad()
     loss.backward()

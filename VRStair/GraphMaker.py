@@ -16,6 +16,38 @@ lFootName = "LeftFootController_"
 realName = "realTrajectory"
 blendName = "blendedTrajectory"
 
+
+class Vector3:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def __str__(self):
+        return str(self.x) + ", " + str(self.y) + ", " + str(self.z)
+
+    def __add__(self, other):
+        x = self.x + other.x
+        y = self.y + other.y
+        z = self.z + other.z
+        return Vector3(x, y, z)
+
+    def __sub__(self, other):
+        x = self.x - other.x
+        y = self.y - other.y
+        z = self.z - other.z
+        return Vector3(x, y, z)
+
+    def __truediv__(self, other):
+        return Vector3(self.x / other, self.y / other, self.z / other)
+
+    def __mul__(self, other):
+        return Vector3(self.x * other, self.y * other, self.z * other)
+
+    def GetLength(self):
+        return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+
+
 def loadPosData(flieName):
     f = open(flieName, 'r')
     # 첫번째 pos 의 x,z값을 0으로 해줌.
@@ -51,7 +83,6 @@ def loadPosData(flieName):
 
 def loadData(flieName):
     f = open(flieName, 'r')
-    # 첫번째 pos 의 x,z값을 0으로 해줌.
     line = f.readline()
     pX = []
     pY = []
@@ -75,7 +106,7 @@ def loadData(flieName):
     data.append(pZ);
     return data
 
-def makeVectorData(data):
+def makeVectorData(data,firstZero = True):
     vecData = []
     px = []
     py = []
@@ -84,18 +115,24 @@ def makeVectorData(data):
     for d in data:
         d = d.replace("(", "").replace(")", "").replace(",", "")
         vec = d.split()
-        if(len(px) == 0):
-            px.append(0)
-            py.append(0)
-            pz.append(0)
-            firstVec.append(float(vec[0]))
-            firstVec.append(float(vec[1]))
-            firstVec.append(float(vec[2]))
-            continue
-        if len(vec) == 3:
-            px.append(float(vec[0]) - firstVec[0])
-            py.append(float(vec[1])-firstVec[1])
-            pz.append(float(vec[2]) - firstVec[2])
+        if firstZero:
+            if(len(px) == 0):
+                px.append(0)
+                py.append(0)
+                pz.append(0)
+                firstVec.append(float(vec[0]))
+                firstVec.append(float(vec[1]))
+                firstVec.append(float(vec[2]))
+                continue
+            if len(vec) == 3:
+                px.append(float(vec[0]) - firstVec[0])
+                py.append(float(vec[1])-firstVec[1])
+                pz.append(float(vec[2]) - firstVec[2])
+        else:
+            if len(vec) == 3:
+                px.append(float(vec[0]))
+                py.append(float(vec[1]))
+                pz.append(float(vec[2]))
     vecData.append(px)
     vecData.append(py)
     vecData.append(pz)
@@ -123,18 +160,181 @@ class RecordedFootData():
             self.trackerHeightData.append(float(t))
         f.close()
 
+class TrackingData():
+    def __init__(self,fileName):
+        self.fileName = fileName
+        self.posData = []
+        self.velData = [[],[],[]]
+        self.speed = []
+        self.maxX = 0
+        self.maxY = 0
+        self.maxYIndex = 0
+        self.maxZ = 0
+        self.validStartIndex = 0
+        self.validEndIndex = 0
+        self.validTh = 0.4
+        self.fixedDeltaTime = 0.01111
+        self.length = 0
+        self.validMovement = 0
+        self.loadData()
 
-def ReadAndDrawGraph(pathArray):
+    def loadData(self):
+        self.posData = loadData(self.fileName)
+        self.length = len(self.posData[0])
+        for i in range(len(self.posData[0])):
+            if i == 0:
+                self.velData[0].append(0)
+                self.velData[1].append(0)
+                self.velData[2].append(0)
+                self.speed.append(0)
+            else:
+                self.velData[0].append( (0.5 * (self.posData[0][i] - self.posData[0][i-1]))/ self.fixedDeltaTime + 0.5 * self.velData[0][i-1] )
+                self.velData[1].append( (0.5 * (self.posData[1][i] - self.posData[1][i-1]))/ self.fixedDeltaTime + 0.5 * self.velData[1][i-1] )
+                self.velData[2].append( (0.5 *(self.posData[2][i] - self.posData[2][i-1]))/ self.fixedDeltaTime + 0.5 * self.velData[2][i-1])
+                self.speed.append(self.GetVelVector(i).GetLength())
+                #print(self.GetVelVector(i).GetLength())
+        self.maxX = max(self.posData[0])
+        self.maxY = max(self.posData[1])
+        self.maxYIndex = self.posData[1].index(self.maxY)
+        self.maxZ = max(self.posData[2])
+        self.validEndIndex = len(self.posData[0])-1
+        for i in range(len(self.speed)):
+            if self.speed[i] > self.validTh and self.validStartIndex == 0 and self.velData[1][i] > 0:
+                self.validStartIndex = i
+                break
+        for i in range(self.posData[1].index(self.maxY),len(self.speed)):
+            if self.speed[i] < self.validTh:
+                self.validEndIndex =  i
+                break
+        for i in range(self.validStartIndex,self.validEndIndex):
+            self.validMovement += (self.GetVelVector(i) * self.fixedDeltaTime).GetLength()
+   #self.speed.index(0.005,self.posData[1].index(maxY))
+
+    def GetAscentVelocity(self):
+        vel = self.velData[1][self.validStartIndex:self.maxYIndex]
+        if len(vel) == 0: return 0
+        return sum(vel)/len(vel)
+
+    def GetGetAscentVelocity2(self,startIndex):
+        return (self.posData[1][self.maxYIndex]-self.posData[1][startIndex])/((self.maxYIndex-startIndex) *self.fixedDeltaTime)
+
+    def GetPosVector(self,i):
+        if len(self.posData[0]) > i :
+            return Vector3(self.posData[0][i],self.posData[1][i],self.posData[2][i])
+        else:
+            print("pos data out of range")
+
+    def GetVelVector(self,i):
+        if len(self.velData[0]) > i :
+            return Vector3(self.velData[0][i],self.velData[1][i],self.velData[2][i])
+        else:
+            print("vel data out of range")
+
+    def GetMaxHeightIndex(self):
+        return self.posData[1].index(self.maxY)
+
+    def DrawPosGraph(self,graph,startIndex = 0, endIndex = 0,color = None,label = None):
+        if endIndex == 0:
+            endIndex = len(self.posData[0])
+        graph.plot(self.posData[1][startIndex:endIndex],color=color,label = label)
+
+    def DrawVelGraph(self,graph,startIndex = 0, endIndex = 0,color = None,label = None):
+        if endIndex == 0:
+            endIndex = len(self.velData[0])
+        graph.plot(self.speed[startIndex:endIndex],color = color,label = label)
+
+
+class TrackingDataSets():
+    def __init__(self,data: TrackingData):
+        dataSets:TrackingData = data
+
+
+
+
+def GetHeightDataList(index,folderName):
+    folder_real = 'foot_dataset/' + folderName + "/" + str(index)
+    file_name = ['HeadData', 'Lfootdata', 'Rfootdata', 'WaistData']
+    file_type = '.txt'
+
+    position_data_real = [[], [], [], []]
+    fixedDeltaTime = 0.011111
+    firstHeight = 0;
+
+    startindex = 0
+    endindex = 0
+    avgEndHeight = 0
+    for i, file in enumerate(file_name):
+        f = open(folder_real + '/' + file + file_type, 'r')
+        n = 0
+        while True:
+            line = f.readline()
+            if not line: break
+            line = line.replace("(", "").replace(")", "").replace(",", "")
+            line = line.split()
+            position_data_real[i].append(float(line[1]))
+            if n == 0 and i == 2:
+                firstHeight = float(line[1])
+            #if i == 2 and startindex == 0 and firstHeight + 0.02 < float(line[1]):
+            #    startindex = n
+            if i == 2 and startindex == 0 and n > 2  :
+                if ( ((position_data_real[i][n-1] - position_data_real[i][n-2]) > 0.001 and (position_data_real[i][n] - position_data_real[i][n-1]) > 0.003) or firstHeight + 0.03 < float(line[1]) ) :
+                    print("startIndex :",n)
+                    startindex = n
+            n +=1
+
+        f.close()
+
+    #print(startindex, endindex,len(position_data_real[0]))
+    x_real = np.arange(len(position_data_real[0]))
+
+    position_data_real = np.array(position_data_real)
+    real_index_end = len(position_data_real[0])
+    return position_data_real[:,startindex:]
+
+
+
+
+def ShowReal_short(starIndex,endIndex,folderName,ColorR = "C0",ColorL = "C1"):
+    heightDataList = []
+    avgEndHeight = 0
+    for j in range(starIndex,endIndex):
+        heightDataList.append(GetHeightDataList(j,folderName))
+        avgEndHeight += heightDataList[j][2][-1]
+    avgEndHeight = avgEndHeight/endIndex
+    #print(avgEndHeight/endIndex)
+    endIndexList = [0] * endIndex
+    avgEnd = 0
+    for i in range(starIndex,endIndex):
+        for j in range(len(heightDataList[i][2])):
+            if(abs(heightDataList[i][2][j] - avgEndHeight) < 0.02) and j > 10 and abs(heightDataList[i][2][j-2] - heightDataList[i][2][j-1]) < 0.001  and abs(heightDataList[i][2][j-1] - heightDataList[i][2][j]) < 0.001 :
+                endIndexList[i] = j
+                avgEnd += j
+                print("end index : ", j,len(heightDataList[i][2]))
+                break
+    print("avgTime:",avgEnd/endIndex * 0.01111 )
+    #plt.plot(x_real[real_index_start:real_index_end] , position_data_real[0][real_index_start:real_index_end],label = 'HeadData')
+    for j in range(starIndex,endIndex):
+        plt.plot(heightDataList[j][1][:endIndexList[j]],ColorL,label ='Lfootdata')
+        plt.plot(heightDataList[j][2][:endIndexList[j]],ColorR,label ='Rfootdata')
+        plt.plot(heightDataList[j][3][:endIndexList[j]],ColorR,label = 'WaistData')
+        #plt.plot(heightDataList[j][2],"C3",label ='Rfootdata')
+        #plt.show()
+    #plt.legend()#[folderName+'HeadData', folderName+'Lfootdata', folderName+'Rfootdata', folderName+'WaistData'])
+    #plt.title(file_name)
+    plt.grid(True)
+    #plt.xticks(np.arange(0, len(position_data_real[0]), 10))
+
+
+def ReadAndDrawGraph(pathR,pathL):
     data = []
-    for path in pathArray:
-        data.append(loadPosData(path).copy())
-    f, axes = plt.subplots(int(len(data)/2), 1)
-    for i in range(int(len(data)/2)):
-        axes[i].set_title(i)
-        axes[i].plot(data[(i*2)][1],label = "L")
-        axes[i].plot(data[(i*2)+1][1], label = "R")
-    f.legend(loc='upper right')
-    plt.show()
+    #for path in pathArray:
+    data.append(loadPosData(pathL).copy())
+    data.append(loadPosData(pathR).copy())
+    #for i in range(int(len(data)/2)):
+    plt.plot(data[0][1],label = "L")
+    plt.plot(data[1][1], label = "R")
+    plt.legend(loc='upper right')
+
 
 def ReadAndDrawGraph2(pathArray,axes,labelName = "compare",LColor = "indigo", RColor = "gold"):
     data = []
@@ -194,7 +394,6 @@ def DrawCompareGraph():
 # f.legend(loc='upper right')
 # plt.show()
 
-
 #ReadAndDrawGraph([folder + "test/Lfootdata1.txt",folder + "test/Rfootdata1.txt",folder + "test/Lfootdata2.txt",folder + "test/Rfootdata2.txt" ])
 
 #
@@ -203,186 +402,249 @@ def DrawCompareGraph():
 # f5 = RecordedFootData(folder+"left_no_one_R.txt")
 # f6 = RecordedFootData(folder+"right_no_one_R.txt")
 
-f3 = RecordedFootData(folder+"upForce/"+"Left_L.txt") #왼발 궤적 - 왼발 먼저
-f4 = RecordedFootData(folder+"upForce/"+"Right_L.txt") #오른발 궤적 - 왼발먼저
-f7 = RecordedFootData(folder+"upForce/"+"Left_R.txt") # 왼발 궤적- 오른발먼저
-f8 = RecordedFootData(folder+"upForce/"+"Right_R.txt") # 오른발 궤적 - 오른발 먼저
+#f3 = RecordedFootData(folder+"upForce/"+"Left_L.txt") #왼발 궤적 - 왼발 먼저
+#f4 = RecordedFootData(folder+"upForce/"+"Right_L.txt") #오른발 궤적 - 왼발먼저
+#f7 = RecordedFootData(folder+"upForce/"+"Left_R.txt") # 왼발 궤적- 오른발먼저
+#f8 = RecordedFootData(folder+"upForce/"+"Right_R.txt") # 오른발 궤적 - 오른발 먼저
 
 
-f, axes = plt.subplots(4, 1)
+#f, axes = plt.subplots(4, 1)
 
 #ReadAndDrawGraph3("blendingData/terrain/L1.txt","blendingData/terrain/R1.txt",axes,0,"3","C0","C1")
-ReadAndDrawGraph3("blendingData/terrain/L2.txt","blendingData/terrain/R2.txt",axes)
-ReadAndDrawGraph3("blendingData/terrain/L15.txt","blendingData/terrain/R15.txt",axes,0,"new","C0","C1")
+#ReadAndDrawGraph3("blendingData/terrain/L2.txt","blendingData/terrain/R2.txt",axes)
+#ReadAndDrawGraph3("blendingData/terrain/L15.txt","blendingData/terrain/R15.txt",axes,0,"new","C0","C1")
 #ReadAndDrawGraph3("blendingData/terrain/L13.txt","blendingData/terrain/R13.txt",axes,0,"new","C2","C3")
 
-'''
-DrawRealStairGraph(axes,True,L = 0, R = 2)
-ReadAndDrawGraph2([folder+"left_no_two_L.txt",folder+"right_no_two_L.txt", folder+"left_no_two_R.txt",folder+"right_no_two_R.txt"],axes,"pre")
-
-axes[0].set_title('Real stair trajectory & virtual blended trajectory (first step : L-foot)')
-axes[0].plot(f3.blendPosData[1],'C3',label = "new (L)");
-axes[0].plot(f4.blendPosData[1],'C4',label = "new (R)");
-
-axes[1].set_title('input trajectory of virtual trajectory (first step : L-foot)')
-axes[1].plot(f3.realPosData[1],'C3');
-axes[1].plot(f4.realPosData[1],'C4');
-
-axes[2].set_title('Real stair trajectory & virtual blended trajectory (first step : R-foot)')
-axes[2].plot(f7.blendPosData[1],'C3');
-axes[2].plot(f8.blendPosData[1],'C4')
-
-axes[3].set_title('input trajectory of virtual trajectory (first step : R-foot)')
-axes[3].plot(f7.realPosData[1],'C3');
-axes[3].plot(f8.realPosData[1],'C4')
+#for i in range(0,10):
 
 
-#axes[3].plot(f7.realPosData[1],label = "real trajectory(no L)");
-#axes[3].plot(f8.realPosData[1],label = "real trajectory(no R)");
-# f9 = RecordedFootData(folder+"LeftFootController_one_R.txt")
-# f10 = RecordedFootData(folder+"RightFootController_one_R.txt")
-# f11 = RecordedFootData(folder+"LeftFootController_one_L.txt")
-# f12 = RecordedFootData(folder+"RightFootController_one_L.txt")
-f9 = RecordedFootData(folder+"left_no_one_R.txt")
-f10 = RecordedFootData(folder+"right_no_one_R.txt")
-f11 = RecordedFootData(folder+"left_no_one_L.txt")
-f12 = RecordedFootData(folder+"right_no_one_L.txt")
-#axes[0].plot(f11.blendPosData[1],label = "virtual stair(L)");
-#axes[0].plot(f12.blendPosData[1],label = "virtual stair(R)");
-axes[1].plot(f11.realPosData[1],'C5',label = "one step trajectory(L)");
-axes[1].plot(f12.realPosData[1],'C6',label = "one step trajectory(R)");
-#axes[2].plot(f9.blendPosData[1],label = "virtual stair(L)");
-#axes[2].plot(f10.blendPosData[1],label = "virtual stair(R)");
-axes[3].plot(f9.realPosData[1],'C5');
-axes[3].plot(f10.realPosData[1],'C6');
+sIndex = 0
+fIndex = 20
 
-waistData1 = np.array(loadData(folder +"1/WaistData.txt"))
-waistData2 = np.array(loadData(folder +"2/WaistData.txt"))
-w1 = np.array(loadData(folder +"1/"+ "Rfootdata.txt")) - waistData1
-w2 = np.array(loadData(folder +"1/"+ "Lfootdata.txt")) - waistData1
-axes[1].plot(w1[1]-w1[1][0],'C7',label = "waist-foot(L)")
-axes[1].plot(w2[1]-w2[1][0],'C8',label = "waist-foot(R)")
-
-w3 = np.array(loadData(folder +"2/"+ "Rfootdata.txt")) - waistData2
-w4 = np.array(loadData(folder +"2/"+ "Lfootdata.txt")) - waistData2
-axes[3].plot(w3[1]-w3[1][0],'C7')
-axes[3].plot(w4[1]-w4[1][0],'C8')
+#ShowReal_short(s,f,'timeCompare/plane',"C1","C2")
 
 
-f.legend(loc='upper right')
-plt.show()
-
-f1 = RecordedFootData()
-f2 = RecordedFootData()
-#f1.LoadFootData(folder+"LeftFootController(2022-07-24_03-22-02).txt")
-#f2.LoadFootData(folder+"RightFootController(2022-07-24_03-22-02).txt")
-#f2.LoadFootData(folder+"LeftFootController(2022-07-24_03-33-00).txt")
-#f1.LoadFootData(folder+"RightFootController(2022-07-24_03-33-00).txt")
-#f2.LoadFootData(folder+"LeftFootController(2022-07-24_03-49-11).txt")
-#f1.LoadFootData(folder+"RightFootController(2022-07-24_03-49-11).txt")
-f2.LoadFootData(folder+"LeftFootController(2022-07-24_03-52-48).txt")
-f1.LoadFootData(folder+"RightFootController(2022-07-24_03-52-48).txt")
-
-f, axes = plt.subplots(2, 1)
-axes[0].set_title('blended trajectory')
-axes[0].plot(f1.blendPosData[1],label = "blended(predict)");
-axes[0].plot(f2.blendPosData[1],'r',label = "blended(not predict)");
+#f, axes = plt.subplots(2, 1)
+g = plt
 
 
-axes[1].set_title('real trajectory')
-axes[1].plot(f1.realPosData[1],label = "real(predict)");
-axes[1].plot(f2.realPosData[1],label = "real(not predict)");
+def DrawTrackingDataSet_forVirtual(folderName,color1="C0",color2 = "C1",label = None):
+    timeCompareFolder = 'foot_dataset/virtualCompare/'
+    avgTime = 0
+    avgMaxFootHeight = 0
+    avgMaxFootVerticalVelocity = 0
+    avgFootVerticalVelocity = 0
+    avgMaxFootSpeed = 0
+    avgMaxHeadVerticalVelocity = 0
+    avgHeadVerticalVelocity = 0
+    avgValidMovement = 0
+    avgFootSpeed = 0
+    avgVerticalMovement = 0
+    avgVerticalSpeed = 0
 
-'''
+    for i in range(sIndex,fIndex):
+        folder_real = timeCompareFolder + folderName + "/"+ str(i)
+        RFootData = TrackingData(folder_real + "/Rfootdata.txt")
+        LFootData = TrackingData(folder_real + "/Lfootdata.txt")
+        WaistData = TrackingData(folder_real + "/HeadData.txt")
+        RFootData.DrawPosGraph(g,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label=label)
+        WaistData.DrawPosGraph(g,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label =label)
+        #HeadData.DrawPosGraph(g,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label =label)
 
-f.legend(loc='upper right')
-plt.show()
+        avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * 0.01
+        avgMaxFootHeight += max(RFootData.posData[1])
+        avgFootVerticalVelocity += RFootData.GetAscentVelocity()
+        avgMaxFootVerticalVelocity += max(RFootData.velData[1])
+        avgMaxFootSpeed += max(RFootData.speed)
+        avgHeadVerticalVelocity += WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
+        avgMaxHeadVerticalVelocity += max(WaistData.velData[1])
+        avgValidMovement += RFootData.validMovement
+        avgFootSpeed += RFootData.validMovement /  ((RFootData.validEndIndex - RFootData.validStartIndex) * 0.01)
+        avgVerticalMovement += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex])
+        avgVerticalSpeed += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex]) / ((RFootData.validEndIndex - RFootData.validStartIndex) * 0.001)
 
+    avgTime /= fIndex
+    avgMaxFootHeight /= fIndex
+    avgFootVerticalVelocity /= fIndex
+    avgMaxFootVerticalVelocity /= fIndex
+    avgMaxFootSpeed /= fIndex
+    avgHeadVerticalVelocity /= fIndex
+    avgMaxHeadVerticalVelocity /= fIndex
+    avgFootSpeed  /= fIndex
+    avgValidMovement /= fIndex
+    avgVerticalMovement /= fIndex
+    avgVerticalSpeed /= fIndex
 
-''' 경사, 계단 비교
-f1 = RecordedFootData()
-f2 = RecordedFootData()
-f1.LoadFootData(folder+"LeftFootController(2022-07-24_00-21-29).txt")
-f2.LoadFootData(folder+"RightFootController(2022-07-24_00-21-29).txt")
+    print("{0}: \n"
+          " 체공 시간 : {1}\n"
+          " 발의 최대 높이 : {2} \n"
+          " 발의 상승 속력 : {3}\n"
+          " 발의 최대 수직 속력 : {4} \n"
+          " 발의 최대 속력 : {5} \n"
+          " 머리 상승 속력 : {6} \n"
+          " 머리 최대 수직 속력 : {7} \n"
+          " 이동 거리 : {8} \n"
+          " 이동 속력 : {9} \n"
+          " 최종 이동 수직 거리 : {10}\n"
+          " 최종 이동 수직 속력 : {11}".format(folderName,avgTime,avgMaxFootHeight,avgFootVerticalVelocity,avgMaxFootVerticalVelocity,avgMaxFootSpeed,
+                                   avgHeadVerticalVelocity,avgMaxHeadVerticalVelocity,avgValidMovement,avgFootSpeed,avgVerticalMovement,avgVerticalSpeed))
+    #print(folderName ,":\n" ,avgTime,max(RFootData.velData[1]),max(RFootData.speed),max(WaistData.velData[1]),RFootData.validMovement)
 
-f3 = RecordedFootData()
-f4 = RecordedFootData()
-f3.LoadFootData(folder+"LeftFootController(2022-07-24_00-26-23).txt")
-f4.LoadFootData(folder+"RightFootController(2022-07-24_00-26-23).txt")
+       # RFootData.DrawVelGraph(axes[1],color=color1)
+def DrawTrackingDataSet(folderName, color1="C0", color2="C1", label=None):
+        timeCompareFolder = 'foot_dataset/timeCompare/'
+        avgTime = 0
+        avgMaxFootHeight = 0
+        avgMaxFootVerticalVelocity = 0
+        avgFootVerticalVelocity = 0
+        avgMaxFootSpeed = 0
+        avgMaxHeadVerticalVelocity = 0
+        avgHeadVerticalVelocity = 0
+        avgValidMovement = 0
+        avgFootSpeed = 0
+        avgVerticalMovement = 0
+        avgVerticalSpeed = 0
 
+        for i in range(sIndex, fIndex):
+            folder_real = timeCompareFolder + folderName + "/" + str(i)
+            RFootData = TrackingData(folder_real + "/Rfootdata.txt")
+            LFootData = TrackingData(folder_real + "/Lfootdata.txt")
+            WaistData = TrackingData(folder_real + "/WaistData.txt")
+            HeadData = TrackingData(folder_real + "/HeadData.txt")
+            RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
+            #LFootData.DrawPosGraph(g, RFootData.validStartIndex, LFootData.length-1, color=color2, label=label)
+            WaistData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
+            #HeadData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
+            deltaTime = 0.011111
+            avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime
+            avgMaxFootHeight += max(RFootData.posData[1])
+            avgFootVerticalVelocity += RFootData.GetAscentVelocity()
+            avgMaxFootVerticalVelocity += max(RFootData.velData[1])
+            avgMaxFootSpeed += max(RFootData.speed)
+            avgHeadVerticalVelocity += WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
+            avgMaxHeadVerticalVelocity += max(WaistData.velData[1])
+            avgValidMovement += RFootData.validMovement
+            avgFootSpeed += RFootData.validMovement / ((RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime)
+            avgVerticalMovement += (
+                        RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex])
+            avgVerticalSpeed += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][
+                RFootData.validStartIndex]) / ((RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime)
 
-f, axes = plt.subplots(2, 2)
-axes[0][0].set_title('Stair(L)')
-axes[0][0].plot(f1.realPosData[1],'b',label = "real position(L)");
-axes[0][0].plot(f1.blendPosData[1],'r',label = "Blending (L)");
+        avgTime /= fIndex
+        avgMaxFootHeight /= fIndex
+        avgFootVerticalVelocity /= fIndex
+        avgMaxFootVerticalVelocity /= fIndex
+        avgMaxFootSpeed /= fIndex
+        avgHeadVerticalVelocity /= fIndex
+        avgMaxHeadVerticalVelocity /= fIndex
+        avgFootSpeed /= fIndex
+        avgValidMovement /= fIndex
+        avgVerticalMovement /= fIndex
+        avgVerticalSpeed /= fIndex
 
+        print("{0}: \n"
+              " 체공 시간 : {1}\n"
+              " 발의 최대 높이 : {2} \n"
+              " 발의 상승 속력 : {3}\n"
+              " 발의 최대 수직 속력 : {4} \n"
+              " 발의 최대 속력 : {5} \n"
+              " 머리 상승 속력 : {6} \n"
+              " 머리 최대 수직 속력 : {7} \n"
+              " 이동 거리 : {8} \n"
+              " 이동 속력 : {9} \n"
+              " 최종 이동 수직 거리 : {10}\n"
+              " 최종 이동 수직 속력 : {11}".format(folderName, avgTime, avgMaxFootHeight, avgFootVerticalVelocity,
+                                           avgMaxFootVerticalVelocity, avgMaxFootSpeed,
+                                           avgHeadVerticalVelocity, avgMaxHeadVerticalVelocity, avgValidMovement,
+                                           avgFootSpeed, avgVerticalMovement, avgVerticalSpeed))
 
-axes[1][0].set_title('Stair(R)')
-axes[1][0].plot(f2.realPosData[1],'b',label = "real position(R)");
-axes[1][0].plot(f2.blendPosData[1],'r',label = "Blending (R)");
-
-
-axes[0][1].set_title('Slope(L)')
-axes[0][1].plot(f3.realPosData[1],'b',label = "real position(L)");
-axes[0][1].plot(f3.blendPosData[1],'r',label = "Blending (L)");
-
-
-axes[1][1].set_title('Slope(R)')
-axes[1][1].plot(f4.realPosData[1],'b',label = "real position(R)");
-axes[1][1].plot(f4.blendPosData[1],'r',label = "Blending (R)");
-
-
-f.legend(loc='upper right')
-plt.show()
-
-'''
-'''
-LrealPos = loadPosData(folder+lFootName+realName+"_PUb.txt");
-LpPos = loadPosData(folder+lFootName+blendName+"_PUb.txt");
-Lp_stair_real = loadPosData(folder+"/stair/"+lFootName+realName+"_PUb.txt");
-Lp_stair_blend = loadPosData(folder+"/stair/"+lFootName+blendName+"_PUb.txt");
-
-RrealPos = loadPosData(folder+rFootName+realName+"_PUb.txt");
-RpPos = loadPosData(folder+rFootName+blendName+"_PUb.txt");
-Rp_stair_real = loadPosData(folder+"/stair/"+rFootName+realName+"_PUb.txt");
-Rp_stair_blend = loadPosData(folder+"/stair/"+rFootName+blendName+"_PUb.txt");
-
-
-f, axes = plt.subplots(4, 1)
-axes[0].plot(LrealPos[1],'b',label = "real position(L)");
-axes[0].plot(LpPos[1],'r',label = "Blending (L)");
-axes[1].plot(Lp_stair_real[1],label = "real position stair(L)");
-axes[1].plot(Lp_stair_blend[1],label = "Blending stair(L)");
-
-
-
-axes[2].plot(RrealPos[1],'g',label = "real position(R)");
-axes[2].plot(RpPos[1],'m',label = "Blending1(R)");
-axes[3].plot(Rp_stair_real[1],label = "real position stair(L)");
-axes[3].plot(Rp_stair_blend[1],label = "Blending stair(L)");
-
-
-# plt.plot(rp2 - rp1);
-# plt.plot(rp4 - rp3);
-f.legend(loc='upper right')
-plt.show()
-'''
-
-'''
-plt.plot(LrealPos[1],'b',label = "real position(L)");
-plt.plot(LpPos[1],'r',label = "Blending1(L)");
-plt.plot(LnpPos[1],'y',label = "Blending2(L)");
-
-
-plt.plot(RrealPos[1],'g',label = "real position(R)");
-plt.plot(RpPos[1],'m',label = "Blending1(R)");
-plt.plot(RnpPos[1],'violet',label = "Blending2(R)");
-#plt.plot(RnpPos[1],'violet',label = "not predict Blending(R)");
+        #WaistData.DrawVelGraph(axes[1],color=color2)
+def DrawTrackingDataSet2(folderName):
+    timeCompareFolder = 'foot_dataset/timeCompare/'
+    ascendingFoot = []
+    ascendingHead = []
+    for i in range(sIndex,fIndex):
+        folder_real = timeCompareFolder + folderName + "/"+ str(i)
+        RFootData = TrackingData(folder_real + "/RFootdata.txt")
+        LFootData = TrackingData(folder_real + "/LFootdata.txt")
+        WaistData =  TrackingData(folder_real + "/WaistData.txt")
+        #RFootData.DrawPosGraph(plt,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label=label)
+        #WaistData.DrawPosGraph(plt,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label =label)
+        ascendingFoot.append(max(RFootData.speed))
+        ascendingHead.append(WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
+        #print(RFootData.GetAscentVelocity(), WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
+    plt.scatter(ascendingFoot,ascendingHead)
+        #print(RFootData.GetAscentVelocity(),WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
 
 
 
-# plt.plot(rp2 - rp1);
-# plt.plot(rp4 - rp3);
-plt.legend(loc='upper right')
-plt.show()
-'''
+for i in range(0,20):
+    folder_real =  'foot_dataset/timeCompare/4stair_one/' + str(i)
+    folder_real2 = 'foot_dataset/timeCompare/3stair_one/' + str(i)
+    # folder_real3 = 'foot_dataset/timeCompare/2stair_one/' + str(i)
+    RFootData = TrackingData(folder_real + "/Rfootdata.txt")
+    WaistData = TrackingData(folder_real + "/Waistdata.txt")
+    RFootData2 = TrackingData(folder_real2 + "/Rfootdata.txt")
+    WaistData2 = TrackingData(folder_real2 + "/Waistdata.txt")
+    # RFootData3 = TrackingData(folder_real3 + "/Rfootdata.txt")
+    # WaistData3 = TrackingData(folder_real3 + "/Waistdata.txt")
+    RFootData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
+    WaistData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
+    RFootData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
+    WaistData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
+    # RFootData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
+    # WaistData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
+    #print(RFootData.GetAscentVelocity(),RFootData2.GetAscentVelocity(),WaistData.GetAscentVelocity(),WaistData2.GetAscentVelocity())
+    plt.grid(True)
+    plt.show()
+
+#DrawTrackingDataSet("plane","C8","C9")
+# DrawTrackingDataSet("1stair","C0","C1")
+# DrawTrackingDataSet("2stair_one","C4","C5")
+# DrawTrackingDataSet("2stair","C2","C3")
+# plt.grid(True)
+# plt.show()
+#DrawTrackingDataSet("4stair","C6","C7")
+#DrawTrackingDataSet("4stair_one","C6","C7")
+#DrawTrackingDataSet("3stair_one","C8","C9")
+
+# DrawTrackingDataSet_forVirtual("4stair_one","C0","C1")
+# DrawTrackingDataSet_forVirtual("4stair_pre","C4","C5")
+# DrawTrackingDataSet("4stair_one","C8","C9")
+#DrawTrackingDataSet_forVirtual("2stair","C0","C1")
+#DrawTrackingDataSet_forVirtual("2stair_pre","C4","C5")
+#DrawTrackingDataSet("slope_down_2_60","C8","C9")
+#DrawTrackingDataSet("slope_down_2_70","C2","C3")
+# DrawTrackingDataSet_forVirtual("3stair_one","C0","C1")
+# DrawTrackingDataSet_forVirtual("3stair_pre","C4","C5")
+# DrawTrackingDataSet("3stair_one","C8","C9")
+
+#DrawTrackingDataSet("4stair_one","C6","C7")
+#DrawTrackingDataSet2("1stair")
+#DrawTrackingDataSet2("2stair")
+#DrawTrackingDataSet2("3stair_one")
+#DrawTrackingDataSet2("2stair_one")
+#DrawTrackingDataSet2("4stair_one")
+
+    #LFootData.DrawVelGraph(axes[1], color="C1")
+
+
+
+#ShowReal_short(s,f, 'timeCompare/1stair',"C3","C4")
+#ShowReal_short(s,f, 'timeCompare/2stair', "C5", "C6")
+#ShowReal_short(s,f, 'timeCompare/2stair_one', "C7", "C8")
+#ShowReal_short(s,f, 'timeCompare/3stair_one', "C9", "C10")
+#ShowReal_short(s,f, 'timeCompare/4stair_one', "C1", "C2")
+#plt.show()
+
+# for i in range(0,4):
+#     #ReadAndDrawGraph("foot_dataset/real_short/up/"+str(i)+"/Lfootdata.txt","foot_dataset/real_short/up/"+str(i)+"/Rfootdata.txt" )
+#     ReadAndDrawGraph("foot_dataset/virtual_stair/" + str(i) + "/Lfootdata.txt",
+#                      "foot_dataset/virtual_stair/" + str(i) + "/Rfootdata.txt")
+#     ReadAndDrawGraph("foot_dataset/virtual_stair/up2/" + str(i) + "/Lfootdata.txt",
+#                      "foot_dataset/virtual_stair/up2/" + str(i) + "/Rfootdata.txt")
+#     #ReadAndDrawGraph("foot_dataset/virtual_stair/"+str(i)+"/HeadData.txt","foot_dataset/virtual_stair/up2/"+str(i)+"/WaistData.txt" )
+#     plt.grid(True)
+#     plt.xticks(np.arange(0, 500, 10))
+#     plt.show()
+#f.legend(loc='upper right')

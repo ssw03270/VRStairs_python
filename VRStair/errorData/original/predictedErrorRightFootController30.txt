@@ -1,3 +1,0 @@
-0.1498518
-MSE 0.1498518
-total_moving_Distance 0.07740483
