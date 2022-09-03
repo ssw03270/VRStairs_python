@@ -160,6 +160,69 @@ class RecordedFootData():
             self.trackerHeightData.append(float(t))
         f.close()
 
+
+class RecordedData():
+    def __init__(self,folderName,format = 1):
+        self.Format = format
+        if(format == 1):
+            self.init_1(folderName)
+        elif(format == 2):
+            self.init_2(folderName)
+
+
+    def init_1(self,folderName):
+        self.RFootData = RecordedFootData(folderName + "RightFootController.txt")
+        self.LFootData = RecordedFootData(folderName + "LeftFootController.txt")
+        self.HeadData = [[]]
+        self.LoadHeadData(folderName + "otherData.txt")
+
+    def init_2(self,folderName):
+        self.RFootData = loadData(folderName + "Rfootdata.txt")
+        self.LFootData = loadData(folderName + "Lfootdata.txt")
+        self.HeadData = loadData(folderName + "WaistData.txt")
+
+    def LoadHeadData(self,fileName):
+        f = open(fileName, 'r')
+        data = f.read()
+        dataList = data.split("other\n")
+        d = dataList[2].split("####\n")
+        self.HeadData = makeVectorData(d[0].split('\n'),False)
+        f.close()
+
+    def DrawGrahp(self,x = "Time",color = None, label = None):
+        rfoot = []
+        lfoot = []
+
+        if(self.Format == 1):
+            rfoot = self.RFootData.blendPosData
+            lfoot = self.LFootData.blendPosData
+        if(self.Format == 2):
+            rfoot = self.RFootData
+            lfoot = self.LFootData
+
+        if(x == "Time"):
+            plt.plot(rfoot[1][1:], color=color, label=label)
+            plt.plot(lfoot[1][1:], color=color, label=label)
+            #plt.plot(self.HeadData[1][1:], color=color, label=label)
+            plt.grid(True)
+            plt.xticks(np.arange(0, 300, 10))
+        if x == "Distance":
+            Vector3(rfoot[0][1],rfoot[1][1],rfoot[1][2])
+
+            plt.plot(rfoot[2][1:],rfoot[1][1:], color=color, label=label)
+            plt.plot(lfoot[2][1:],lfoot[1][1:], color=color, label=label)
+            plt.plot(self.HeadData[2][1:],self.HeadData[1][1:], color=color, label=label)
+            rMaxHeight = max(rfoot[1])
+            lMaxHeight = max(lfoot[1])
+            rindex = rfoot[1].index(rMaxHeight)
+            lindex = lfoot[1].index(lMaxHeight)
+            plt.scatter(rfoot[2][rindex],rfoot[1][rindex])
+            plt.scatter(lfoot[2][lindex],lfoot[1][lindex])
+
+            plt.grid(True)
+            #plt.xticks(np.arange(0, 600, 10))
+
+#Real traking data
 class TrackingData():
     def __init__(self,fileName):
         self.fileName = fileName
@@ -244,86 +307,6 @@ class TrackingData():
         graph.plot(self.speed[startIndex:endIndex],color = color,label = label)
 
 
-class TrackingDataSets():
-    def __init__(self,data: TrackingData):
-        dataSets:TrackingData = data
-
-
-
-
-def GetHeightDataList(index,folderName):
-    folder_real = 'foot_dataset/' + folderName + "/" + str(index)
-    file_name = ['HeadData', 'Lfootdata', 'Rfootdata', 'WaistData']
-    file_type = '.txt'
-
-    position_data_real = [[], [], [], []]
-    fixedDeltaTime = 0.011111
-    firstHeight = 0;
-
-    startindex = 0
-    endindex = 0
-    avgEndHeight = 0
-    for i, file in enumerate(file_name):
-        f = open(folder_real + '/' + file + file_type, 'r')
-        n = 0
-        while True:
-            line = f.readline()
-            if not line: break
-            line = line.replace("(", "").replace(")", "").replace(",", "")
-            line = line.split()
-            position_data_real[i].append(float(line[1]))
-            if n == 0 and i == 2:
-                firstHeight = float(line[1])
-            #if i == 2 and startindex == 0 and firstHeight + 0.02 < float(line[1]):
-            #    startindex = n
-            if i == 2 and startindex == 0 and n > 2  :
-                if ( ((position_data_real[i][n-1] - position_data_real[i][n-2]) > 0.001 and (position_data_real[i][n] - position_data_real[i][n-1]) > 0.003) or firstHeight + 0.03 < float(line[1]) ) :
-                    print("startIndex :",n)
-                    startindex = n
-            n +=1
-
-        f.close()
-
-    #print(startindex, endindex,len(position_data_real[0]))
-    x_real = np.arange(len(position_data_real[0]))
-
-    position_data_real = np.array(position_data_real)
-    real_index_end = len(position_data_real[0])
-    return position_data_real[:,startindex:]
-
-
-
-
-def ShowReal_short(starIndex,endIndex,folderName,ColorR = "C0",ColorL = "C1"):
-    heightDataList = []
-    avgEndHeight = 0
-    for j in range(starIndex,endIndex):
-        heightDataList.append(GetHeightDataList(j,folderName))
-        avgEndHeight += heightDataList[j][2][-1]
-    avgEndHeight = avgEndHeight/endIndex
-    #print(avgEndHeight/endIndex)
-    endIndexList = [0] * endIndex
-    avgEnd = 0
-    for i in range(starIndex,endIndex):
-        for j in range(len(heightDataList[i][2])):
-            if(abs(heightDataList[i][2][j] - avgEndHeight) < 0.02) and j > 10 and abs(heightDataList[i][2][j-2] - heightDataList[i][2][j-1]) < 0.001  and abs(heightDataList[i][2][j-1] - heightDataList[i][2][j]) < 0.001 :
-                endIndexList[i] = j
-                avgEnd += j
-                print("end index : ", j,len(heightDataList[i][2]))
-                break
-    print("avgTime:",avgEnd/endIndex * 0.01111 )
-    #plt.plot(x_real[real_index_start:real_index_end] , position_data_real[0][real_index_start:real_index_end],label = 'HeadData')
-    for j in range(starIndex,endIndex):
-        plt.plot(heightDataList[j][1][:endIndexList[j]],ColorL,label ='Lfootdata')
-        plt.plot(heightDataList[j][2][:endIndexList[j]],ColorR,label ='Rfootdata')
-        plt.plot(heightDataList[j][3][:endIndexList[j]],ColorR,label = 'WaistData')
-        #plt.plot(heightDataList[j][2],"C3",label ='Rfootdata')
-        #plt.show()
-    #plt.legend()#[folderName+'HeadData', folderName+'Lfootdata', folderName+'Rfootdata', folderName+'WaistData'])
-    #plt.title(file_name)
-    plt.grid(True)
-    #plt.xticks(np.arange(0, len(position_data_real[0]), 10))
-
 
 def ReadAndDrawGraph(pathR,pathL):
     data = []
@@ -396,7 +379,6 @@ def DrawCompareGraph():
 
 #ReadAndDrawGraph([folder + "test/Lfootdata1.txt",folder + "test/Rfootdata1.txt",folder + "test/Lfootdata2.txt",folder + "test/Rfootdata2.txt" ])
 
-#
 # f1 = RecordedFootData(folder+"left_no_one_L.txt")
 # f2 = RecordedFootData(folder+"right_no_one_L.txt")
 # f5 = RecordedFootData(folder+"left_no_one_R.txt")
@@ -406,7 +388,6 @@ def DrawCompareGraph():
 #f4 = RecordedFootData(folder+"upForce/"+"Right_L.txt") #오른발 궤적 - 왼발먼저
 #f7 = RecordedFootData(folder+"upForce/"+"Left_R.txt") # 왼발 궤적- 오른발먼저
 #f8 = RecordedFootData(folder+"upForce/"+"Right_R.txt") # 오른발 궤적 - 오른발 먼저
-
 
 #f, axes = plt.subplots(4, 1)
 
@@ -420,13 +401,9 @@ def DrawCompareGraph():
 
 sIndex = 0
 fIndex = 20
-
 #ShowReal_short(s,f,'timeCompare/plane',"C1","C2")
-
-
 #f, axes = plt.subplots(2, 1)
 g = plt
-
 
 def DrawTrackingDataSet_forVirtual(folderName,color1="C0",color2 = "C1",label = None):
     timeCompareFolder = 'foot_dataset/virtualCompare/'
@@ -578,25 +555,25 @@ def DrawTrackingDataSet2(folderName):
 
 
 
-for i in range(0,20):
-    folder_real =  'foot_dataset/timeCompare/4stair_one/' + str(i)
-    folder_real2 = 'foot_dataset/timeCompare/3stair_one/' + str(i)
-    # folder_real3 = 'foot_dataset/timeCompare/2stair_one/' + str(i)
-    RFootData = TrackingData(folder_real + "/Rfootdata.txt")
-    WaistData = TrackingData(folder_real + "/Waistdata.txt")
-    RFootData2 = TrackingData(folder_real2 + "/Rfootdata.txt")
-    WaistData2 = TrackingData(folder_real2 + "/Waistdata.txt")
-    # RFootData3 = TrackingData(folder_real3 + "/Rfootdata.txt")
-    # WaistData3 = TrackingData(folder_real3 + "/Waistdata.txt")
-    RFootData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
-    WaistData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
-    RFootData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
-    WaistData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
-    # RFootData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
-    # WaistData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
-    #print(RFootData.GetAscentVelocity(),RFootData2.GetAscentVelocity(),WaistData.GetAscentVelocity(),WaistData2.GetAscentVelocity())
-    plt.grid(True)
-    plt.show()
+# for i in range(0,20):
+#     folder_real =  'foot_dataset/timeCompare/4stair_one/' + str(i)
+#     folder_real2 = 'foot_dataset/timeCompare/3stair_one/' + str(i)
+#     # folder_real3 = 'foot_dataset/timeCompare/2stair_one/' + str(i)
+#     RFootData = TrackingData(folder_real + "/Rfootdata.txt")
+#     WaistData = TrackingData(folder_real + "/Waistdata.txt")
+#     RFootData2 = TrackingData(folder_real2 + "/Rfootdata.txt")
+#     WaistData2 = TrackingData(folder_real2 + "/Waistdata.txt")
+#     # RFootData3 = TrackingData(folder_real3 + "/Rfootdata.txt")
+#     # WaistData3 = TrackingData(folder_real3 + "/Waistdata.txt")
+#     RFootData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
+#     WaistData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
+#     RFootData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
+#     WaistData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
+#     # RFootData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
+#     # WaistData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
+#     #print(RFootData.GetAscentVelocity(),RFootData2.GetAscentVelocity(),WaistData.GetAscentVelocity(),WaistData2.GetAscentVelocity())
+#     plt.grid(True)
+#     plt.show()
 
 #DrawTrackingDataSet("plane","C8","C9")
 # DrawTrackingDataSet("1stair","C0","C1")
