@@ -81,24 +81,28 @@ def loadPosData(flieName):
     data.append(pZ);
     return data
 
-def loadData(flieName):
+def loadData(flieName,firstZero = False):
     f = open(flieName, 'r')
     line = f.readline()
     pX = []
     pY = []
     pZ = []
-    line = f.readline()
+    #line = f.readline()
     line = line.replace("(", "").replace(")", "").replace(",", "")
     line = line.split()
+    firstX = firstY = firstZ = 0
+    if firstZero:
+        firstX = float(line[0])
+        firstY = float(line[1])
+        firstZ = float(line[2])
     while True:
         line = f.readline()
         if not line: break
         line = line.replace("(", "").replace(")", "").replace(",", "")
         line = line.split()
-        pX.append(float(line[0]))
-        #if(float(line[1]) > -1 and float(line[1]) < 1.5) :
-        pY.append(float(line[1]))
-        pZ.append(float(line[2]))
+        pX.append(float(line[0]) - firstX)
+        pY.append(float(line[1]) - firstY)
+        pZ.append(float(line[2]) - firstZ)
     f.close()
     data = []
     data.append(pX);
@@ -177,8 +181,8 @@ class RecordedData():
         self.LoadHeadData(folderName + "otherData.txt")
 
     def init_2(self,folderName):
-        self.RFootData = loadData(folderName + "Rfootdata.txt")
-        self.LFootData = loadData(folderName + "Lfootdata.txt")
+        self.RFootData = loadData(folderName + "Rfootdata.txt",True)
+        self.LFootData = loadData(folderName + "Lfootdata.txt",True)
         self.HeadData = loadData(folderName + "WaistData.txt")
 
     def LoadHeadData(self,fileName):
@@ -201,16 +205,16 @@ class RecordedData():
             lfoot = self.LFootData
 
         if(x == "Time"):
-            plt.plot(rfoot[1][1:], color=color, label=label)
-            plt.plot(lfoot[1][1:], color=color, label=label)
-            #plt.plot(self.HeadData[1][1:], color=color, label=label)
+            plt.plot(rfoot[1][1:], color=color)
+            plt.plot(lfoot[1][1:], color=color)
+            plt.plot(self.HeadData[1][1:], color=color, label=label)
             plt.grid(True)
-            plt.xticks(np.arange(0, 300, 10))
+            #plt.xticks(np.arange(0, 300, 10))
         if x == "Distance":
             Vector3(rfoot[0][1],rfoot[1][1],rfoot[1][2])
 
-            plt.plot(rfoot[2][1:],rfoot[1][1:], color=color, label=label)
-            plt.plot(lfoot[2][1:],lfoot[1][1:], color=color, label=label)
+            plt.plot(rfoot[2][1:],rfoot[1][1:], color=color)
+            plt.plot(lfoot[2][1:],lfoot[1][1:], color=color)
             plt.plot(self.HeadData[2][1:],self.HeadData[1][1:], color=color, label=label)
             rMaxHeight = max(rfoot[1])
             lMaxHeight = max(lfoot[1])
@@ -221,6 +225,30 @@ class RecordedData():
 
             plt.grid(True)
             #plt.xticks(np.arange(0, 600, 10))
+
+    def CalcVelocity(self):
+        velocity_sum = np.zeros(3)
+        velocity_count = np.zeros(3)
+
+        for i in range(1, len(self.LFootData[1])):
+            velocity = self.LFootData[1][i] - self.LFootData[1][i - 1]
+            if velocity > 0:
+                velocity_sum[0] += velocity / 0.01
+                velocity_count[0] += 1
+
+        for i in range(1, len(self.RFootData[1])):
+            velocity = self.RFootData[1][i] - self.RFootData[1][i - 1]
+            if velocity > 0:
+                velocity_sum[1] += velocity / 0.01
+                velocity_count[1] += 1
+
+        for i in range(1, len(self.HeadData[1])):
+            velocity = self.HeadData[1][i] - self.HeadData[1][i - 1]
+            if velocity > 0:
+                velocity_sum[2] += velocity / 0.01
+                velocity_count[2] += 1
+
+        return velocity_sum / velocity_count
 
 #Real traking data
 class TrackingData():
