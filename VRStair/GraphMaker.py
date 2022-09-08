@@ -7,6 +7,7 @@ import os
 import random
 import math
 import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
 
 #folder = "blendingData/0722-compare/"
 folder = "blendingData/realStair/"
@@ -185,6 +186,9 @@ class RecordedData():
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
         self.HeadData = loadData(folderName + "WaistData.txt")
 
+        self.HighestPoint = []
+        self.ChangePoint = []
+
     def LoadHeadData(self,fileName):
         f = open(fileName, 'r')
         data = f.read()
@@ -203,6 +207,10 @@ class RecordedData():
         if(self.Format == 2):
             rfoot = self.RFootData
             lfoot = self.LFootData
+
+        self.RFootData[1] = savgol_filter(self.RFootData[1], 51, 3)
+        self.LFootData[1] = savgol_filter(self.LFootData[1], 51, 3)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
 
         if(x == "Time"):
             plt.plot(rfoot[1][1:], color=color)
@@ -249,6 +257,116 @@ class RecordedData():
                 velocity_count[2] += 1
 
         return velocity_sum / velocity_count
+
+    def findHighestPoint(self):
+        threshold = 0.001
+        cnt = 1
+        for data in [self.RFootData, self.LFootData, self.HeadData]:
+            idx_list = []
+            for i in range(cnt, len(data[1]), cnt):
+                if math.fabs(data[1][i] - data[1][i - cnt]) / cnt < threshold:
+                    idx_list.append(i)
+
+            real_idx_list = []
+            for i in range(1, len(idx_list) - 1):
+                if data[1][idx_list[i]] > data[1][idx_list[i - 1]] and data[1][idx_list[i]] > data[1][idx_list[i + 1]] :
+                    real_idx_list.append(idx_list[i])
+
+            real_idx_list2 = []
+            cnt2 = 10
+            threshold2 = 0.01
+            for idx in real_idx_list:
+                if idx + cnt2 < len(data[1]):
+                    if data[1][idx] - data[1][idx - cnt2] > threshold2 and data[1][idx] - data[1][idx + cnt2] > threshold2:
+                        real_idx_list2.append(idx)
+
+            real_idx_list_y = []
+            for idx in real_idx_list2:
+                real_idx_list_y.append(data[1][idx])
+            plt.scatter(real_idx_list2, real_idx_list_y)
+
+            self.HighestPoint.append(real_idx_list2)
+
+    def findChangePoint(self):
+        threshold = 0.001
+        cnt = 1
+        for data in [self.RFootData, self.LFootData, self.HeadData]:
+            idx_list = []
+            for i in range(cnt, len(data[1]), cnt):
+                if math.fabs(data[1][i] - data[1][i - cnt]) / cnt < threshold:
+                    idx_list.append(i)
+
+            real_idx_list = []
+            threshold2 = 0.01
+            for i in range(1, len(idx_list) - 1):
+                if data[1][idx_list[i]] - data[1][idx_list[i - 1]] < threshold2 and data[1][idx_list[i]] + threshold2 < data[1][idx_list[i + 1]] :
+                    real_idx_list.append(idx_list[i])
+
+            real_idx_list2 = []
+            cnt2 = 10
+            for idx in real_idx_list:
+                if idx + cnt2 < len(data[1]):
+                    if data[1][idx] - data[1][idx - cnt2] < threshold2 and data[1][idx] + threshold2 < data[1][idx + cnt2]:
+                        real_idx_list2.append(idx)
+
+            real_idx_list_y = []
+            for idx in real_idx_list2:
+                real_idx_list_y.append(data[1][idx])
+            plt.scatter(real_idx_list2, real_idx_list_y)
+
+            self.ChangePoint.append(real_idx_list2)
+
+    def CalcVelocity2(self):
+        value = 100
+        # Rfoot up speed
+        RfootUpSpeed = []
+        RfootNextPoint = [self.HighestPoint[0] + self.ChangePoint[0]]
+        RfootNextPoint = sorted(RfootNextPoint[0])
+        RfootPair = []
+        for i in range(len(RfootNextPoint)):
+            if RfootNextPoint[i] in self.HighestPoint[0]:
+                RfootPair.append([RfootNextPoint[i - 1], RfootNextPoint[i]])
+        for pair in RfootPair:
+            speed = (self.RFootData[1][pair[1]] - self.RFootData[1][pair[0]]) / (pair[1] - \
+                    pair[0])
+            RfootUpSpeed.append(speed * value)
+
+        # Lfoot up speed
+        LfootUpSpeed = []
+        LfootNextPoint = [self.HighestPoint[1] + self.ChangePoint[1]]
+        LfootNextPoint = sorted(LfootNextPoint[0])
+        LfootPair = []
+        for i in range(len(LfootNextPoint)):
+            if LfootNextPoint[i] in self.HighestPoint[1]:
+                LfootPair.append([LfootNextPoint[i - 1], LfootNextPoint[i]])
+        for pair in LfootPair:
+            speed = (self.LFootData[1][pair[1]] - self.LFootData[1][pair[0]]) / (pair[1] - \
+                    pair[0])
+            LfootUpSpeed.append(speed * value)
+
+        # Head up speed
+        HeadUpSpeed = []
+        HeadNextPoint = [self.HighestPoint[0] + self.HighestPoint[1] + self.ChangePoint[2]]
+        HeadNextPoint = sorted(HeadNextPoint[0])
+
+        HeadPair = []
+        for i in range(len(HeadNextPoint)):
+            if HeadNextPoint[i] in self.ChangePoint[2]:
+                HeadPair.append([HeadNextPoint[i], HeadNextPoint[i +1]])
+
+        for pair in HeadPair:
+            speed = (self.HeadData[1][pair[1]] - self.HeadData[1][pair[0]]) / (pair[1] - \
+                    pair[0])
+            HeadUpSpeed.append(speed * value)
+
+        FootUpSpeed = LfootUpSpeed + RfootUpSpeed
+        FootUpSpeed = sorted(FootUpSpeed)
+        FootUpSpeed = FootUpSpeed[2:]
+
+        HeadUpSpeed = sorted(HeadUpSpeed)
+        HeadUpSpeed = HeadUpSpeed[:3]
+
+        return sum(HeadUpSpeed), len(HeadUpSpeed), sum(FootUpSpeed), len(FootUpSpeed)
 
 #Real traking data
 class TrackingData():
