@@ -169,10 +169,13 @@ class RecordedFootData():
 class RecordedData():
     def __init__(self,folderName,format = 1):
         self.Format = format
+
         if(format == 1):
             self.init_1(folderName)
         elif(format == 2):
             self.init_2(folderName)
+        elif(format == 3):
+            self.init_3(folderName)
 
 
     def init_1(self,folderName):
@@ -181,11 +184,60 @@ class RecordedData():
         self.HeadData = [[]]
         self.LoadHeadData(folderName + "otherData.txt")
 
+        rfoot = savgol_filter(self.RFootData.blendPosData[1], 51, 6)
+        lfoot = savgol_filter(self.LFootData.blendPosData[1], 51, 6)
+        #self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
+        self.RVelData = [0]
+        self.LVelData = [0]
+        self.HeadVelData = [0]
+
+        for i in range(1, len(rfoot)):
+            self.RVelData.append((rfoot[i] - rfoot[i - 1]) / 0.0111111)
+            self.LVelData.append((lfoot[i] - lfoot[i - 1]) / 0.0111111)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
+
     def init_2(self,folderName):
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
         self.HeadData = loadData(folderName + "WaistData.txt")
+        #self.HeadData = np.array(HeadData)
 
+        self.RFootData[1] = savgol_filter(self.RFootData[1], 51, 6)
+        self.LFootData[1] = savgol_filter(self.LFootData[1], 51, 6)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 6)
+        self.RVelData = [0]
+        self.LVelData = [0]
+        self.HeadVelData = [0]
+
+        for i in range(1,len(self.RFootData[1])):
+            self.RVelData.append((self.RFootData[1][i] - self.RFootData[1][i-1]) / 0.0111111)
+            self.LVelData.append((self.LFootData[1][i] - self.LFootData[1][i - 1]) / 0.011111)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
+        self.HighestPoint = []
+        self.ChangePoint = []
+
+    def init_3(self,folderName):
+        self.RFootData = loadData(folderName + "Rfootdata.txt",True)
+        self.LFootData = loadData(folderName + "Lfootdata.txt",True)
+        self.HeadData = loadData(folderName + "HeadData.txt")
+        self.ankleData = loadData(folderName + "WaistData.txt",True)
+        #self.HeadData = np.array(HeadData)
+
+        self.RFootData[1] = savgol_filter(self.RFootData[1], 51, 6)
+        self.LFootData[1] = savgol_filter(self.LFootData[1], 51, 6)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 6)
+        self.ankleData[1] = savgol_filter(self.ankleData[1], 51, 6)
+
+        self.RVelData = [0]
+        self.LVelData = [0]
+        self.HeadVelData = [0]
+        self.ankleVelData = [0]
+
+        for i in range(1,len(self.RFootData[1])):
+            self.RVelData.append((self.RFootData[1][i] - self.RFootData[1][i-1]) / 0.0111111)
+            self.LVelData.append((self.LFootData[1][i] - self.LFootData[1][i - 1]) / 0.011111)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
+            self.ankleVelData.append((self.ankleData[1][i] - self.ankleData[1][i - 1]) / 0.011111)
         self.HighestPoint = []
         self.ChangePoint = []
 
@@ -193,29 +245,79 @@ class RecordedData():
         f = open(fileName, 'r')
         data = f.read()
         dataList = data.split("other\n")
+
         d = dataList[2].split("####\n")
         self.HeadData = makeVectorData(d[0].split('\n'),False)
         f.close()
 
-    def DrawGrahp(self,x = "Time",color = None, label = None):
+    def DrawPosAndVelGraph(self,color = None, label = None, startIndex = None, endIndex = None):
+        f,axes = plt.subplots(2,1)
         rfoot = []
         lfoot = []
 
         if(self.Format == 1):
             rfoot = self.RFootData.blendPosData
             lfoot = self.LFootData.blendPosData
-        if(self.Format == 2):
+
+        if(self.Format == 2 or self.Format == 3):
             rfoot = self.RFootData
             lfoot = self.LFootData
 
-        self.RFootData[1] = savgol_filter(self.RFootData[1], 51, 3)
-        self.LFootData[1] = savgol_filter(self.LFootData[1], 51, 3)
-        self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
+        if(startIndex == None):
+            startIndex= 1
+        if(endIndex == None):
+            endIndex = -1
+
+        axes[0].plot(rfoot[1][startIndex:endIndex], color=color,label = "Rfoot")
+        axes[0].plot(self.HeadData[1][startIndex:endIndex], color=color, label="head")
+
+        if(self.Format != 3):
+            axes[0].plot(lfoot[1][startIndex:endIndex], color=color,label = "Lfoot")
+
+        self.HeadVelData = np.array(self.HeadVelData)
+        self.RVelData = np.array(self.RVelData)
+        self.LVelData = np.array(self.LVelData)
+
+        if self.Format == 3:
+            axes[0].plot(self.ankleData[1][startIndex:endIndex], color=color, label="ankle")
+
+        axes[1].plot(self.RVelData[startIndex:endIndex],color=color,label = "RFoot speed")
+        if (self.Format != 3):
+            axes[1].plot(self.LVelData[startIndex:endIndex],color=color,label = "LFoot speed")
+            axes[1].plot(self.LVelData[startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,
+                         label="Lfoot speed - head speed")
+        axes[1].plot(self.RVelData[startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color,label = "RFoot speed- head speed")
+        axes[1].plot(self.HeadVelData[startIndex:endIndex],label="head speed")
+
+
+        if self.Format == 3:
+            axes[1].plot(self.ankleVelData[startIndex:endIndex], color=color, label="ankle speed")
+            axes[1].plot(self.ankleVelData[startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color, label="ankle speed - head speed")
+
+        axes[0].grid(True)
+        axes[1].grid(True)
+        axes[0].legend()
+        axes[1].legend()
+        return
+    def DrawGrahp(self,x = "Time",color = None, label = None):
+        rfoot = []
+        lfoot = []
+        #plt.axhline(y=0.02, color='r', linewidth=1)
+        if(self.Format == 1):
+            rfoot = self.RFootData.blendPosData
+            lfoot = self.LFootData.blendPosData
+        if(self.Format == 2):
+            rfoot = self.RFootData
+            lfoot = self.LFootData
+            self.HeadData[1] = np.array(self.HeadData[1])-0.3
 
         if(x == "Time"):
             plt.plot(rfoot[1][1:], color=color)
             plt.plot(lfoot[1][1:], color=color)
             plt.plot(self.HeadData[1][1:], color=color, label=label)
+            if(self.Format == 1):
+                plt.plot(self.RFootData.realPosData[1][1:], color=color)
+                plt.plot(self.LFootData.realPosData[1][1:], color=color)
             plt.grid(True)
             #plt.xticks(np.arange(0, 300, 10))
         if x == "Distance":
@@ -387,9 +489,15 @@ class TrackingData():
         self.validMovement = 0
         self.loadData()
 
+
     def loadData(self):
-        self.posData = loadData(self.fileName)
+        self.valid = False
+        self.posData = loadData(self.fileName,True)
         self.length = len(self.posData[0])
+        self.posData[1] = savgol_filter(self.posData[1], 51, 6).tolist()
+        self.posData = np.array(self.posData)[:,:].tolist()
+
+
         for i in range(len(self.posData[0])):
             if i == 0:
                 self.velData[0].append(0)
@@ -397,9 +505,9 @@ class TrackingData():
                 self.velData[2].append(0)
                 self.speed.append(0)
             else:
-                self.velData[0].append( (0.5 * (self.posData[0][i] - self.posData[0][i-1]))/ self.fixedDeltaTime + 0.5 * self.velData[0][i-1] )
-                self.velData[1].append( (0.5 * (self.posData[1][i] - self.posData[1][i-1]))/ self.fixedDeltaTime + 0.5 * self.velData[1][i-1] )
-                self.velData[2].append( (0.5 *(self.posData[2][i] - self.posData[2][i-1]))/ self.fixedDeltaTime + 0.5 * self.velData[2][i-1])
+                self.velData[0].append( (self.posData[0][i] - self.posData[0][i-1])/ self.fixedDeltaTime )
+                self.velData[1].append( (self.posData[1][i] - self.posData[1][i-1])/ self.fixedDeltaTime )
+                self.velData[2].append( (self.posData[2][i] - self.posData[2][i-1])/ self.fixedDeltaTime )
                 self.speed.append(self.GetVelVector(i).GetLength())
                 #print(self.GetVelVector(i).GetLength())
         self.maxX = max(self.posData[0])
@@ -407,14 +515,15 @@ class TrackingData():
         self.maxYIndex = self.posData[1].index(self.maxY)
         self.maxZ = max(self.posData[2])
         self.validEndIndex = len(self.posData[0])-1
-        for i in range(len(self.speed)):
-            if self.speed[i] > self.validTh and self.validStartIndex == 0 and self.velData[1][i] > 0:
-                self.validStartIndex = i
-                break
-        for i in range(self.posData[1].index(self.maxY),len(self.speed)):
-            if self.speed[i] < self.validTh:
-                self.validEndIndex =  i
-                break
+        if(self.valid):
+            for i in range(len(self.speed)):
+                if self.speed[i] > self.validTh and self.validStartIndex == 0 and self.velData[1][i] > 0.1:
+                    self.validStartIndex = i
+                    break
+            for i in range(self.posData[1].index(self.maxY),len(self.speed)):
+                if self.speed[i] < self.validTh and i > self.validStartIndex:
+                    self.validEndIndex = i
+                    break
         for i in range(self.validStartIndex,self.validEndIndex):
             self.validMovement += (self.GetVelVector(i) * self.fixedDeltaTime).GetLength()
    #self.speed.index(0.005,self.posData[1].index(maxY))
@@ -424,8 +533,17 @@ class TrackingData():
         if len(vel) == 0: return 0
         return sum(vel)/len(vel)
 
+    def GetAscentHeadVelocity(self, startIndex,endIndex):
+        maxY = max(self.posData[1][startIndex:endIndex])
+        i = self.posData[1].index(maxY)
+        if(i-startIndex <= 0) : return 0;
+        return (maxY- self.posData[1][startIndex]) / ((i - startIndex) * self.fixedDeltaTime)
+
     def GetGetAscentVelocity2(self,startIndex):
-        return (self.posData[1][self.maxYIndex]-self.posData[1][startIndex])/((self.maxYIndex-startIndex) *self.fixedDeltaTime)
+        if (self.maxYIndex-startIndex) == 0 :
+            return 0
+        else:
+            return (self.posData[1][self.maxYIndex]-self.posData[1][startIndex])/((self.maxYIndex-startIndex) *self.fixedDeltaTime)
 
     def GetPosVector(self,i):
         if len(self.posData[0]) > i :
@@ -614,8 +732,8 @@ def DrawTrackingDataSet_forVirtual(folderName,color1="C0",color2 = "C1",label = 
     #print(folderName ,":\n" ,avgTime,max(RFootData.velData[1]),max(RFootData.speed),max(WaistData.velData[1]),RFootData.validMovement)
 
        # RFootData.DrawVelGraph(axes[1],color=color1)
-def DrawTrackingDataSet(folderName, color1="C0", color2="C1", label=None):
-        timeCompareFolder = 'foot_dataset/timeCompare/'
+def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", label=None):
+        #timeCompareFolder = 'foot_dataset/timeCompare/'
         avgTime = 0
         avgMaxFootHeight = 0
         avgMaxFootVerticalVelocity = 0
@@ -628,28 +746,39 @@ def DrawTrackingDataSet(folderName, color1="C0", color2="C1", label=None):
         avgVerticalMovement = 0
         avgVerticalSpeed = 0
 
-        for i in range(sIndex, fIndex):
-            folder_real = timeCompareFolder + folderName + "/" + str(i)
+        for i in range(0, fIndex):
+            folder_real = folderName + "/" + str(i)
             RFootData = TrackingData(folder_real + "/Rfootdata.txt")
             LFootData = TrackingData(folder_real + "/Lfootdata.txt")
             WaistData = TrackingData(folder_real + "/WaistData.txt")
             HeadData = TrackingData(folder_real + "/HeadData.txt")
-            RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
+            #RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
+            #RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.maxYIndex, color="C4", label=label)
+
+            #WaistData.DrawPosGraph(g, RFootData.validStartIndex , WaistData.maxYIndex,color="C5")
+            if i == 1:
+                RFootData.DrawPosGraph(g, color=color1, label="RFoot")
+                LFootData.DrawPosGraph(g, color=color2, label="LFoot")
+
+            RFootData.DrawPosGraph(g, color=color1)
+            LFootData.DrawPosGraph(g, color=color2)
             #LFootData.DrawPosGraph(g, RFootData.validStartIndex, LFootData.length-1, color=color2, label=label)
-            WaistData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
+            WaistData.DrawPosGraph(g,color=color1)
+            #WaistData.DrawPosGraph(g, RFootData.validStartIndex, WaistData.maxYIndex, color=color1, label=label)
+
             #HeadData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
             deltaTime = 0.011111
+            print((RFootData.validEndIndex, RFootData.validStartIndex))
             avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime
             avgMaxFootHeight += max(RFootData.posData[1])
-            avgFootVerticalVelocity += RFootData.GetAscentVelocity()
+            avgFootVerticalVelocity += RFootData.GetGetAscentVelocity2(RFootData.validStartIndex)
             avgMaxFootVerticalVelocity += max(RFootData.velData[1])
             avgMaxFootSpeed += max(RFootData.speed)
-            avgHeadVerticalVelocity += WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
+            avgHeadVerticalVelocity += WaistData.GetAscentHeadVelocity(RFootData.validStartIndex, RFootData.maxYIndex)#WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
             avgMaxHeadVerticalVelocity += max(WaistData.velData[1])
             avgValidMovement += RFootData.validMovement
             avgFootSpeed += RFootData.validMovement / ((RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime)
-            avgVerticalMovement += (
-                        RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex])
+            avgVerticalMovement += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex])
             avgVerticalSpeed += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][
                 RFootData.validStartIndex]) / ((RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime)
 
