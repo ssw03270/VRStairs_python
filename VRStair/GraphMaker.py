@@ -9,6 +9,7 @@ import math
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
+fixedDeltaTime = 0.011111
 #folder = "blendingData/0722-compare/"
 folder = "blendingData/realStair/"
 #folder = "blendingData/"
@@ -165,10 +166,128 @@ class RecordedFootData():
             self.trackerHeightData.append(float(t))
         f.close()
 
+class H2F_Data():
+    def __init__(self,folderName,onFilter = True):
+        self.RFootData = loadData(folderName + "Rfootdata.txt",True)
+        self.LFootData = loadData(folderName + "Lfootdata.txt",True)
+        self.HeadData = loadData(folderName + "WaistData.txt")
+        self.RVelData = [[],[],[]]
+        self.LVelData = [[],[],[]]
+        self.RSpeedData = []
+        self.LSpeedData = []
+        self.HeadVelData = []
+
+        if onFilter:
+            self.OnFiltering()
+
+        for i in range(1,len(self.RFootData[1])):
+            for j in range(0,3):
+                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i - 1]) / fixedDeltaTime)
+                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / fixedDeltaTime)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / fixedDeltaTime)
+            self.RSpeedData.append(math.sqrt(self.RVelData[0][i-1] **2 +
+                                   self.RVelData[1][i-1] **2 +
+                                   self.RVelData[2][i-1] **2))
+            self.LSpeedData.append(math.sqrt(self.LVelData[0][i-1] ** 2 +
+                                   self.LVelData[1][i-1] ** 2 +
+                                   self.LVelData[2][i-1] ** 2))
+
+    def OnFiltering(self,windowSize = 51, poly = 6):
+        self.RFootData[1] = savgol_filter(self.RFootData[1], windowSize, poly)
+        self.LFootData[1] = savgol_filter(self.LFootData[1], windowSize, poly)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], windowSize, poly)
+
+    def DrawGrahp(self,color = None, label = None):
+        plt.plot(self.RFootData[1][1:], color=color)
+        plt.plot(self.LFootData[1][1:], color=color)
+        plt.plot(self.HeadData[1][1:], color=color, label=label)
+
+class Step():
+    def __init__(self,origin,originVel,validStart,validEnd):
+        self.originPos = origin
+        self.originVel = originVel
+        self.validStart = validStart
+        self.validEnd = validEnd
+        self.posData = np.array(origin)[:,validStart:validEnd]
+        self.velData = np.array(originVel)[:,validStart:validEnd]
+        self.length = len(self.posData[0])
+        self.maxY = max(self.posData[1])
+        self.maxYIndex = np.where(self.posData[1]==self.maxY)[0][0]
+        self.ascentVelocity = (self.maxY - self.posData[1][0]) / (self.maxYIndex * fixedDeltaTime)
+        self.descentVelocity = (self.maxY-self.posData[1][self.length-1]) / ((self.length - self.maxYIndex) * fixedDeltaTime)
+        self.verticalDistance = self.posData[1][self.length - 1] - self.posData[1][0]
+    def DrawStartToMax(self):
+        plt.plot(list(range(self.validStart,self.validStart + self.maxYIndex)) ,self.originPos[1][self.validStart:self.validStart + self.maxYIndex])
+
+class StepAnalyzer():
+    def __init__(self,files):
+        self.data : H2F_Data = []
+        self.steps = []
+        self.make_steps(files)
+
+    def make_steps(self,files):
+        for file in files:
+            data = H2F_Data(file)
+            self.data.append(data)
+
+            validIndex = self.find_splitPoint(data.RFootData,data.RSpeedData)
+            for i in range(len(validIndex[0])):
+                si = validIndex[0][i]
+                ei = validIndex[1][i]
+                newStep = Step(data.RFootData,data.RVelData,si,ei)
+                newStep.DrawStartToMax()
+                self.steps.append(newStep)
+            validIndex = self.find_splitPoint(data.LFootData, data.LSpeedData)
+            for i in range(len(validIndex[0])):
+                si = validIndex[0][i]
+                ei = validIndex[1][i]
+                newStep = Step(data.LFootData,data.LVelData,si,ei)
+                newStep.DrawStartToMax()
+                self.steps.append(newStep)
+
+            data.DrawGrahp()
+            plt.show()
+        return
+
+    def find_splitPoint(self,posData,speedData):
+        windowSize = 12
+        validTH = 0.45
+        end = len(speedData)
+        nextFindIsMove = True
+        nextIndex = 0
+        nextCool = 50
+        validStart = []
+        validEnd = []
+
+        for i in range(0,end-windowSize):
+            curE = i + windowSize
+            curSum = sum(speedData[i:i+windowSize])/windowSize
+            if nextIndex > 0:
+                nextIndex -= 1
+                continue
+            if(nextFindIsMove):
+                if(curSum > validTH):
+                    plt.scatter(i,posData[1][i])
+                    nextFindIsMove = False
+                    nextIndex = nextCool
+                    validStart.append(i)
+            else:
+                if (curSum < validTH):
+                    plt.scatter(i, posData[1][i])
+                    nextFindIsMove = True
+                    nextIndex = nextCool
+                    validEnd.append(i)
+        if len(validStart) != len(validEnd):
+            print("error - valid index")
+            return [[0],[end-1]]
+        return [validStart,validEnd]
+
 
 class RecordedData():
     def __init__(self,folderName,format = 1):
         self.Format = format
+        self.RFootData = None
+        self.LFootData = None
 
         if(format == 1):
             self.init_1(folderName)
@@ -205,13 +324,14 @@ class RecordedData():
         self.RFootData[1] = savgol_filter(self.RFootData[1], 51, 6)
         self.LFootData[1] = savgol_filter(self.LFootData[1], 51, 6)
         self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 6)
-        self.RVelData = [0]
-        self.LVelData = [0]
-        self.HeadVelData = [0]
+        self.RVelData = [[],[],[]]
+        self.LVelData = [[],[],[]]
+        self.HeadVelData = []
 
         for i in range(1,len(self.RFootData[1])):
-            self.RVelData.append((self.RFootData[1][i] - self.RFootData[1][i-1]) / 0.0111111)
-            self.LVelData.append((self.LFootData[1][i] - self.LFootData[1][i - 1]) / 0.011111)
+            for j in range(0,3):
+                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i-1]) / 0.0111111)
+                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / 0.011111)
             self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
         self.HighestPoint = []
         self.ChangePoint = []
@@ -227,17 +347,18 @@ class RecordedData():
         self.LFootData[1] = savgol_filter(self.LFootData[1], 51, 6)
         self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 6)
         self.ankleData[1] = savgol_filter(self.ankleData[1], 51, 6)
-
-        self.RVelData = [0]
-        self.LVelData = [0]
-        self.HeadVelData = [0]
-        self.ankleVelData = [0]
+        self.RVelData = [[],[],[]]
+        self.LVelData = [[],[],[]]
+        self.HeadVelData = []
+        self.ankleVelData = [[],[],[]]
 
         for i in range(1,len(self.RFootData[1])):
-            self.RVelData.append((self.RFootData[1][i] - self.RFootData[1][i-1]) / 0.0111111)
-            self.LVelData.append((self.LFootData[1][i] - self.LFootData[1][i - 1]) / 0.011111)
+            for j in range(0,3):
+                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i-1]) / 0.0111111)
+                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / 0.011111)
+                self.ankleVelData.append((self.ankleData[1][i] - self.ankleData[1][i - 1]) / 0.011111)
             self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
-            self.ankleVelData.append((self.ankleData[1][i] - self.ankleData[1][i - 1]) / 0.011111)
+
         self.HighestPoint = []
         self.ChangePoint = []
 
@@ -281,12 +402,12 @@ class RecordedData():
         if self.Format == 3:
             axes[0].plot(self.ankleData[1][startIndex:endIndex], color=color, label="ankle")
 
-        axes[1].plot(self.RVelData[startIndex:endIndex],color=color,label = "RFoot speed")
+        axes[1].plot(self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed")
         if (self.Format != 3):
-            axes[1].plot(self.LVelData[startIndex:endIndex],color=color,label = "LFoot speed")
-            axes[1].plot(self.LVelData[startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,
+            axes[1].plot(self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed")
+            axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,
                          label="Lfoot speed - head speed")
-        axes[1].plot(self.RVelData[startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color,label = "RFoot speed- head speed")
+        axes[1].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color,label = "RFoot speed- head speed")
         axes[1].plot(self.HeadVelData[startIndex:endIndex],label="head speed")
 
 
@@ -491,11 +612,11 @@ class TrackingData():
 
 
     def loadData(self):
-        self.valid = False
+        self.valid = True
         self.posData = loadData(self.fileName,True)
         self.length = len(self.posData[0])
         self.posData[1] = savgol_filter(self.posData[1], 51, 6).tolist()
-        self.posData = np.array(self.posData)[:,:].tolist()
+        self.posData = np.array(self.posData)[:,:140].tolist()
 
 
         for i in range(len(self.posData[0])):
@@ -521,13 +642,15 @@ class TrackingData():
                     self.validStartIndex = i
                     break
             for i in range(self.posData[1].index(self.maxY),len(self.speed)):
-                if self.speed[i] < self.validTh and i > self.validStartIndex:
+                if self.speed[i] < self.validTh-0.14 and i > self.validStartIndex:
                     self.validEndIndex = i
                     break
         for i in range(self.validStartIndex,self.validEndIndex):
             self.validMovement += (self.GetVelVector(i) * self.fixedDeltaTime).GetLength()
    #self.speed.index(0.005,self.posData[1].index(maxY))
-
+    def GetDescentVelocity(self):
+        if(self.validEndIndex - self.maxYIndex == 0) : return 0
+        return (self.maxY - self.posData[1][self.validEndIndex]) / ((self.validEndIndex - self.maxYIndex) * self.fixedDeltaTime)
     def GetAscentVelocity(self):
         vel = self.velData[1][self.validStartIndex:self.maxYIndex]
         if len(vel) == 0: return 0
@@ -630,37 +753,6 @@ def DrawRealStairGraph(axes,istwo = False,L=0,R = 1):
     axes[R].plot(d4[1],'C0');
     axes[R].plot(d3[1], 'C1');
 
-def DrawCompareGraph():
-    return
-
-
-# f, axes = plt.subplots(2, 1)
-# ReadAndDrawGraph3("blendingData/towerStair/L_new.txt","blendingData/towerStair/R_new.txt",axes,"new","C0","C1")
-# ReadAndDrawGraph3("blendingData/towerStair/L_t4.txt","blendingData/towerStair/R_t4.txt",axes,"pre","C2","C3")
-#
-# f.legend(loc='upper right')
-# plt.show()
-
-#ReadAndDrawGraph([folder + "test/Lfootdata1.txt",folder + "test/Rfootdata1.txt",folder + "test/Lfootdata2.txt",folder + "test/Rfootdata2.txt" ])
-
-# f1 = RecordedFootData(folder+"left_no_one_L.txt")
-# f2 = RecordedFootData(folder+"right_no_one_L.txt")
-# f5 = RecordedFootData(folder+"left_no_one_R.txt")
-# f6 = RecordedFootData(folder+"right_no_one_R.txt")
-
-#f3 = RecordedFootData(folder+"upForce/"+"Left_L.txt") #왼발 궤적 - 왼발 먼저
-#f4 = RecordedFootData(folder+"upForce/"+"Right_L.txt") #오른발 궤적 - 왼발먼저
-#f7 = RecordedFootData(folder+"upForce/"+"Left_R.txt") # 왼발 궤적- 오른발먼저
-#f8 = RecordedFootData(folder+"upForce/"+"Right_R.txt") # 오른발 궤적 - 오른발 먼저
-
-#f, axes = plt.subplots(4, 1)
-
-#ReadAndDrawGraph3("blendingData/terrain/L1.txt","blendingData/terrain/R1.txt",axes,0,"3","C0","C1")
-#ReadAndDrawGraph3("blendingData/terrain/L2.txt","blendingData/terrain/R2.txt",axes)
-#ReadAndDrawGraph3("blendingData/terrain/L15.txt","blendingData/terrain/R15.txt",axes,0,"new","C0","C1")
-#ReadAndDrawGraph3("blendingData/terrain/L13.txt","blendingData/terrain/R13.txt",axes,0,"new","C2","C3")
-
-#for i in range(0,10):
 
 
 sIndex = 0
@@ -745,6 +837,7 @@ def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", labe
         avgFootSpeed = 0
         avgVerticalMovement = 0
         avgVerticalSpeed = 0
+        avgFootDescentSpeed =0
 
         for i in range(0, fIndex):
             folder_real = folderName + "/" + str(i)
@@ -752,18 +845,19 @@ def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", labe
             LFootData = TrackingData(folder_real + "/Lfootdata.txt")
             WaistData = TrackingData(folder_real + "/WaistData.txt")
             HeadData = TrackingData(folder_real + "/HeadData.txt")
-            #RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
-            #RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.maxYIndex, color="C4", label=label)
+            RFootData.DrawPosGraph(g, RFootData.validStartIndex, color=color1)
+            RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color="b", label=label)
+            RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.maxYIndex, color="r", label=label)
 
             #WaistData.DrawPosGraph(g, RFootData.validStartIndex , WaistData.maxYIndex,color="C5")
             if i == 1:
                 RFootData.DrawPosGraph(g, color=color1, label="RFoot")
                 LFootData.DrawPosGraph(g, color=color2, label="LFoot")
 
-            RFootData.DrawPosGraph(g, color=color1)
-            LFootData.DrawPosGraph(g, color=color2)
+
+            #LFootData.DrawPosGraph(g, color=color2)
             #LFootData.DrawPosGraph(g, RFootData.validStartIndex, LFootData.length-1, color=color2, label=label)
-            WaistData.DrawPosGraph(g,color=color1)
+            #WaistData.DrawPosGraph(g,color=color1)
             #WaistData.DrawPosGraph(g, RFootData.validStartIndex, WaistData.maxYIndex, color=color1, label=label)
 
             #HeadData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
@@ -772,6 +866,7 @@ def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", labe
             avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime
             avgMaxFootHeight += max(RFootData.posData[1])
             avgFootVerticalVelocity += RFootData.GetGetAscentVelocity2(RFootData.validStartIndex)
+            avgFootDescentSpeed += RFootData.GetDescentVelocity()
             avgMaxFootVerticalVelocity += max(RFootData.velData[1])
             avgMaxFootSpeed += max(RFootData.speed)
             avgHeadVerticalVelocity += WaistData.GetAscentHeadVelocity(RFootData.validStartIndex, RFootData.maxYIndex)#WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
@@ -785,6 +880,7 @@ def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", labe
         avgTime /= fIndex
         avgMaxFootHeight /= fIndex
         avgFootVerticalVelocity /= fIndex
+        avgFootDescentSpeed /= fIndex
         avgMaxFootVerticalVelocity /= fIndex
         avgMaxFootSpeed /= fIndex
         avgHeadVerticalVelocity /= fIndex
@@ -805,10 +901,11 @@ def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", labe
               " 이동 거리 : {8} \n"
               " 이동 속력 : {9} \n"
               " 최종 이동 수직 거리 : {10}\n"
-              " 최종 이동 수직 속력 : {11}".format(folderName, avgTime, avgMaxFootHeight, avgFootVerticalVelocity,
+              " 최종 이동 수직 속력 : {11}\n"
+              " 발 하강 속력 : {12}".format(folderName, avgTime, avgMaxFootHeight, avgFootVerticalVelocity,
                                            avgMaxFootVerticalVelocity, avgMaxFootSpeed,
                                            avgHeadVerticalVelocity, avgMaxHeadVerticalVelocity, avgValidMovement,
-                                           avgFootSpeed, avgVerticalMovement, avgVerticalSpeed))
+                                           avgFootSpeed, avgVerticalMovement, avgVerticalSpeed,avgFootDescentSpeed))
 
         #WaistData.DrawVelGraph(axes[1],color=color2)
 def DrawTrackingDataSet2(folderName):
@@ -829,74 +926,3 @@ def DrawTrackingDataSet2(folderName):
         #print(RFootData.GetAscentVelocity(),WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
 
 
-
-# for i in range(0,20):
-#     folder_real =  'foot_dataset/timeCompare/4stair_one/' + str(i)
-#     folder_real2 = 'foot_dataset/timeCompare/3stair_one/' + str(i)
-#     # folder_real3 = 'foot_dataset/timeCompare/2stair_one/' + str(i)
-#     RFootData = TrackingData(folder_real + "/Rfootdata.txt")
-#     WaistData = TrackingData(folder_real + "/Waistdata.txt")
-#     RFootData2 = TrackingData(folder_real2 + "/Rfootdata.txt")
-#     WaistData2 = TrackingData(folder_real2 + "/Waistdata.txt")
-#     # RFootData3 = TrackingData(folder_real3 + "/Rfootdata.txt")
-#     # WaistData3 = TrackingData(folder_real3 + "/Waistdata.txt")
-#     RFootData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
-#     WaistData.DrawPosGraph(plt,RFootData.validStartIndex,color="C1")
-#     RFootData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
-#     WaistData2.DrawPosGraph(plt,RFootData2.validStartIndex,color="C3")
-#     # RFootData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
-#     # WaistData3.DrawPosGraph(plt,RFootData3.validStartIndex,color="C4")
-#     #print(RFootData.GetAscentVelocity(),RFootData2.GetAscentVelocity(),WaistData.GetAscentVelocity(),WaistData2.GetAscentVelocity())
-#     plt.grid(True)
-#     plt.show()
-
-#DrawTrackingDataSet("plane","C8","C9")
-# DrawTrackingDataSet("1stair","C0","C1")
-# DrawTrackingDataSet("2stair_one","C4","C5")
-# DrawTrackingDataSet("2stair","C2","C3")
-# plt.grid(True)
-# plt.show()
-#DrawTrackingDataSet("4stair","C6","C7")
-#DrawTrackingDataSet("4stair_one","C6","C7")
-#DrawTrackingDataSet("3stair_one","C8","C9")
-
-# DrawTrackingDataSet_forVirtual("4stair_one","C0","C1")
-# DrawTrackingDataSet_forVirtual("4stair_pre","C4","C5")
-# DrawTrackingDataSet("4stair_one","C8","C9")
-#DrawTrackingDataSet_forVirtual("2stair","C0","C1")
-#DrawTrackingDataSet_forVirtual("2stair_pre","C4","C5")
-#DrawTrackingDataSet("slope_down_2_60","C8","C9")
-#DrawTrackingDataSet("slope_down_2_70","C2","C3")
-# DrawTrackingDataSet_forVirtual("3stair_one","C0","C1")
-# DrawTrackingDataSet_forVirtual("3stair_pre","C4","C5")
-# DrawTrackingDataSet("3stair_one","C8","C9")
-
-#DrawTrackingDataSet("4stair_one","C6","C7")
-#DrawTrackingDataSet2("1stair")
-#DrawTrackingDataSet2("2stair")
-#DrawTrackingDataSet2("3stair_one")
-#DrawTrackingDataSet2("2stair_one")
-#DrawTrackingDataSet2("4stair_one")
-
-    #LFootData.DrawVelGraph(axes[1], color="C1")
-
-
-
-#ShowReal_short(s,f, 'timeCompare/1stair',"C3","C4")
-#ShowReal_short(s,f, 'timeCompare/2stair', "C5", "C6")
-#ShowReal_short(s,f, 'timeCompare/2stair_one', "C7", "C8")
-#ShowReal_short(s,f, 'timeCompare/3stair_one', "C9", "C10")
-#ShowReal_short(s,f, 'timeCompare/4stair_one', "C1", "C2")
-#plt.show()
-
-# for i in range(0,4):
-#     #ReadAndDrawGraph("foot_dataset/real_short/up/"+str(i)+"/Lfootdata.txt","foot_dataset/real_short/up/"+str(i)+"/Rfootdata.txt" )
-#     ReadAndDrawGraph("foot_dataset/virtual_stair/" + str(i) + "/Lfootdata.txt",
-#                      "foot_dataset/virtual_stair/" + str(i) + "/Rfootdata.txt")
-#     ReadAndDrawGraph("foot_dataset/virtual_stair/up2/" + str(i) + "/Lfootdata.txt",
-#                      "foot_dataset/virtual_stair/up2/" + str(i) + "/Rfootdata.txt")
-#     #ReadAndDrawGraph("foot_dataset/virtual_stair/"+str(i)+"/HeadData.txt","foot_dataset/virtual_stair/up2/"+str(i)+"/WaistData.txt" )
-#     plt.grid(True)
-#     plt.xticks(np.arange(0, 500, 10))
-#     plt.show()
-#f.legend(loc='upper right')
