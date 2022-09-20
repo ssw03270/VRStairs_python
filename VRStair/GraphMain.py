@@ -4,16 +4,76 @@ import matplotlib.pyplot as plt
 
 folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/recodingTest/"
 data =  g.RecordedData(folder)
-data1 = g.RecordedData(folder + "/36/")
-data2 = g.RecordedData(folder + "/8/")
-data2.DrawGrahp(color = "C0")
-data1.DrawGrahp(color = "C4")
+
 #data.DrawGrahp(x = "Distance")
 #data1.DrawGrahp()
 #data2.DrawGrahp()
 
 folder2 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
-Stair1 = g.RecordedData(folder2,2)
+real = g.RecordedData(folder2,2)
+
+
+names = ["노성래","박주현","정승재","주창돈","한동현","서민영","이로운","이준혁"]
+
+stair1 = []
+for i in range(0,10):
+    for n in names:
+        stair1.append("foot_dataset/real_data/"+n+ "/stair1/" + str(i) + "/")
+
+
+stair1_60 = []
+for i in range(0,10):
+    stair1_60.append("foot_dataset/real_data/stair1_60_ssw/" + str(i) + "/")
+    stair1_60.append("foot_dataset/real_data/stair_1_60/" + str(i) + "/")
+    stair1_60.append("foot_dataset/real_data/홍성은/stair1_60/" + str(i) + "/")
+    for n in names:
+        stair1_60.append("foot_dataset/real_data/"+n+ "/stair1_60/" + str(i) + "/")
+
+stair1_85 = []
+for i in range(0,10):
+    stair1_85.append("foot_dataset/real_data/stair1_85_ssw/" + str(i) + "/")
+    stair1_85.append("foot_dataset/real_data/stair1_85_isb/" + str(i) + "/")
+    stair1_85.append("foot_dataset/real_data/홍성은/stair1_85/" + str(i) + "/")
+    for n in names:
+        stair1_85.append("foot_dataset/real_data/"+n+ "/stair1_85/" + str(i) + "/")
+
+stair2 = []
+for i in range(0,10):
+    stair2.append("foot_dataset/real_data/홍성은/stair2/" + str(i) + "/")
+    stair2.append("foot_dataset/real_data/김민정/stair2/" + str(i) + "/")
+    stair2.append("foot_dataset/real_data/황준태/stair2/" + str(i) + "/")
+    for n in names:
+        stair2.append("foot_dataset/real_data/"+n+ "/stair2/" + str(i) + "/")
+
+stair2_60 = []
+for i in range(0,10):
+    for n in names:
+        stair2_60.append("foot_dataset/real_data/"+n+ "/stair2_60/" + str(i) + "/")
+
+stair2_85 = []
+for i in range(0,10):
+    for n in names:
+        stair2_85.append("foot_dataset/real_data/"+n+ "/stair2_85/" + str(i) + "/")
+
+print("stair1")
+g.StepAnalyzer(stair1)
+print("stair2")
+g.StepAnalyzer(stair2)
+
+print("stair1_60")
+g.StepAnalyzer(stair1_60)
+print("stair2_60")
+g.StepAnalyzer(stair2_60)
+
+print("stair1_85")
+g.StepAnalyzer(stair1_85)
+print("stair2_85")
+g.StepAnalyzer(stair2_85)
+
+#g.StepAnalyzer(files1)
+
+
+
 #Stair1.DrawGrahp(color= "C3")
 # folder3 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
 # Stair2 = g.RecordedData(folder3,2)
