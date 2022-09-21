@@ -227,7 +227,7 @@ def ShowVirtual():
 
         position_data_real = np.array(position_data_real)
 
-        index_length = 610
+        index_length = 457
         index = 0
         real_index_start = index
         real_index_end = index + index_length
@@ -239,9 +239,9 @@ def ShowVirtual():
             sum += abs(position_data_real[3][i] - position_data_real[3][i-1])
         print(sum / (real_index_end - real_index_start) * 5000)
 
-        for i in range(0, 3):
+        for i in range(0, 4):
             plt.plot(x_real[real_index_start:real_index_end], position_data_real[i][real_index_start:real_index_end])
-        plt.legend(['HeadData', 'Lfootdata', 'Rfootdata'])
+        plt.legend(['Headdata', 'Lfootdata', 'Rfootdata', 'Waistdata'])
         plt.title('virtual')
         plt.grid(True)
         plt.xticks(np.arange(0, index_length, 10))

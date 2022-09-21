@@ -278,7 +278,7 @@ class H2F_Data():
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH or (curSum < validTH +0.1 and abs(velData[1][i]) < 0.1)):
+                if (curSum < validTH or (curSum < validTH +0.2 and abs(velData[1][i]) < 0.08)):
                     plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
@@ -341,11 +341,16 @@ class Step():
 
     def IsOutlier(self,avgDict):
         if not self.isHead:
-            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.7:
+            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
                 return True
             if self.verticalDistance/avgDict["verticalDistance"] < 0.5:
                 return True
             if abs(self.lastY - avgDict["lastY"]) > 0.1:
+                return True
+        if self.isHead:
+            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
+                return True
+            if self.verticalDistance / avgDict["verticalDistance"] < 0.5 and self.verticalDistance / avgDict["verticalDistance"] > 1.5:
                 return True
         return False
 
@@ -401,16 +406,16 @@ class StepAnalyzer():
         for data in self.data:
             heads.append(data.GetFirstHead())
             heads2.append(data.GetLastHead())
-        #if self.isDebug:
-        for h in heads:
-            h.Draw()
-        plt.show()
+        if self.isDebug:
+            for h in heads:
+                h.Draw()
+            plt.show()
         print("-------------Head movement1------------")
         self.AnalyzeStep(heads)
-        #if self.isDebug:
-        for h in heads2:
-            h.Draw()
-        plt.show()
+        if self.isDebug:
+            for h in heads2:
+                h.Draw()
+            plt.show()
         print("-------------Head movement2------------")
         self.AnalyzeStep(heads2)
 
