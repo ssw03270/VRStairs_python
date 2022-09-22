@@ -168,6 +168,7 @@ class RecordedFootData():
 
 class H2F_Data():
     def __init__(self,folderName,onFilter = True):
+        self.fileName = folderName
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
         self.HeadData = loadData(folderName + "WaistData.txt")
@@ -203,7 +204,10 @@ class H2F_Data():
         self.HeadData[1] = savgol_filter(self.HeadData[1], windowSize, poly)
 
     def GetFirstHead(self):
-        return self.validHeads[0]
+        if len(self.validHeads) > 0:
+            return self.validHeads[0]
+        else:
+            print(self.fileName," : error no vaild head")
 
     def GetLastHead(self):
         return self.validHeads[len(self.validHeads)-1]
@@ -219,7 +223,10 @@ class H2F_Data():
             return None;
 
     def GetLastStep(self):
-        return self.steps[len(self.steps)-1]
+        if len(self.validHeads) > 0:
+            return self.steps[len(self.steps)-1]
+        else:
+            print(self.fileName, " : error no vaild head")
 
     def SplitStep(self):
         if(len(self.steps) != 0 ):
@@ -261,13 +268,15 @@ class H2F_Data():
         end = len(speedData)
         nextFindIsMove = True
         nextIndex = 0
-        nextCool = 35 # 발이 떼진 순간 or 발이 닿은 순간을 찾으면 nextCool 프레임 동안은 찾지 않음.
+        nextCool = 30 # 발이 떼진 순간 or 발이 닿은 순간을 찾으면 nextCool 프레임 동안은 찾지 않음.
         validStart = []
         validEnd = []
 
         for i in range(0,end-windowSize):
             curE = i + windowSize
             curSum = sum(speedData[i:i+windowSize])/windowSize
+
+            curVelYSum = sum(velData[1][i:i+windowSize])/windowSize
             if nextIndex > 0:
                 nextIndex -= 1
                 continue
@@ -278,7 +287,7 @@ class H2F_Data():
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH or (curSum < validTH +0.2 and abs(velData[1][i]) < 0.08)):
+                if (curSum < validTH or ((velData[1][i] - velData[1][i-3]) < 0) and ((velData[1][i]) - velData[1][i+3] < 0 )):
                     plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
@@ -343,14 +352,16 @@ class Step():
         if not self.isHead:
             if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
                 return True
-            if self.verticalDistance/avgDict["verticalDistance"] < 0.5:
+            if self.verticalDistance/avgDict["verticalDistance"] < 0.5 or self.verticalDistance/avgDict["verticalDistance"] > 1.3:
                 return True
             if abs(self.lastY - avgDict["lastY"]) > 0.1:
+                return True
+            if self.maxY / avgDict["maxY"] > 1.2 or  self.maxY / avgDict["maxY"] < 0.8 :
                 return True
         if self.isHead:
             if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
                 return True
-            if self.verticalDistance / avgDict["verticalDistance"] < 0.5 and self.verticalDistance / avgDict["verticalDistance"] > 1.5:
+            if self.verticalDistance / avgDict["verticalDistance"] < 0.5 or (self.verticalDistance / avgDict["verticalDistance"])> 1.3:
                 return True
         return False
 
@@ -372,12 +383,15 @@ class Step():
 
 
 class StepAnalyzer():
-    def __init__(self,files):
+    def __init__(self,files,isDebug = False):
         self.data : H2F_Data = []
         self.firstSteps = []
         self.secondStpes = []
         self.lastSteps = []
-        self.isDebug = False
+        self.firstHeads = []
+        self.lastHeads = []
+
+        self.isDebug = isDebug
 
         self.make_steps(files)
         self.AnalyzeHead()
@@ -401,23 +415,27 @@ class StepAnalyzer():
         return
 
     def AnalyzeHead(self):
-        heads = []
-        heads2 = []
         for data in self.data:
-            heads.append(data.GetFirstHead())
-            heads2.append(data.GetLastHead())
-        if self.isDebug:
-            for h in heads:
-                h.Draw()
-            plt.show()
+            fh = data.GetFirstHead()
+            lh = data.GetLastHead()
+            if fh:
+                self.firstHeads.append(fh)
+            if lh:
+                self.lastHeads.append(lh)
+
         print("-------------Head movement1------------")
-        self.AnalyzeStep(heads)
         if self.isDebug:
-            for h in heads2:
+            for h in self.firstHeads:
                 h.Draw()
             plt.show()
+        self.AnalyzeStep(self.firstHeads)
+
         print("-------------Head movement2------------")
-        self.AnalyzeStep(heads2)
+        if self.isDebug:
+            for h in self.lastHeads:
+                h.Draw()
+            plt.show()
+        self.AnalyzeStep(self.lastHeads)
 
     def AnalyzeFirstStep(self):
         for data in self.data:
@@ -460,6 +478,7 @@ class StepAnalyzer():
         for v in infoDict.keys():
             infoDict[v] /= len(steps)
         return infoDict
+
     def GetSDInfo(self,avgInfo,steps):
         infoDict = {"descentVelocity" : 0,
                     "ascentVelocity" : 0,
