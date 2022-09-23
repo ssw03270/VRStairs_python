@@ -253,10 +253,11 @@ class H2F_Data():
         preE = 0
         for s,e,k in self.stepIndexes:
             if preE > s + 20:
+                #plt.cla()
                 preE = e
                 print("error:",self.fileName)
-                self.DrawGrahp()
-                plt.show()
+                #self.DrawGrahp()
+                #plt.show()
                 continue
             if(k == 1): #Right
                 self.steps.append(Step(self.RFootData,self.RVelData,s,e))
@@ -281,8 +282,8 @@ class H2F_Data():
             s.DrawStartToMax()
 
     def find_head_splitPoint(self,startIndex,endIndex,posData,velData):
-        windowSize = 12
-        validTH = 0.2
+        windowSize = 6
+        validTH = 0.3
         end = endIndex
         nextFindIsMove = True
         nextIndex = 0
@@ -291,23 +292,45 @@ class H2F_Data():
         validEnd = []
         for i in range(startIndex,endIndex-windowSize):
             curE = i + windowSize
-            curSum = sum(velData[1][i:i+windowSize])/windowSize
+            curSum = 0#sum(velData[1][i:i+windowSize])/windowSize
+            for j in range(i,windowSize+i):
+                curSum += velData[1][j] ** 2
+            curSum = math.sqrt(curSum)
+            #print(curSum)
             if nextIndex > 0:
                 nextIndex -= 1
                 continue
             if(nextFindIsMove): # 머리가 올라가기 시작하는 순간을 찾음.
-                if(curSum > validTH  and velData[1][i] > 0.1):
+                if(curSum > validTH and velData[1][i] > 0.05):
+                    #print("뭐지",curSum,velData[1][i])
                     plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
-                    return (i,endIndex)
 
-        return (startIndex,endIndex)
+            else:  # 발이 다시 땅에 닿는 순간을 찾음.
+                if (curSum < validTH - 0.15 and velData[1][i] < 0.02):
+                    plt.scatter(i, posData[1][i])
+                    nextFindIsMove = True
+                    nextIndex = nextCool
+                    validEnd.append(i)
+                    break
+        if(not nextFindIsMove): #발이 다시 땅에 닿는 순간을 못찾았다면 맨 마지막 index를 땅에 닿는 인덱스로 넣어줌.
+            validEnd.append(end)
+            plt.scatter(end, posData[1][end])
+
+        if len(validStart) != len(validEnd):
+            print("error - valid index")
+            return [[0],[end-1]]
+
+        if len(validStart) == 0:
+            return (startIndex,endIndex)
+
+        return (validStart[0],validEnd[0])
 
     def find_splitPoint(self,posData,velData,speedData):
-        windowSize = 12
-        validTH = 0.45
+        windowSize = 14
+        validTH = 0.4
         end = len(speedData)
         nextFindIsMove = True
         nextIndex = 0
@@ -330,7 +353,7 @@ class H2F_Data():
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH - 0.1 or ((posData[1][i] - posData[1][i-3]) < 0) and ((posData[1][i]) - posData[1][i+3] < 0 )):
+                if (curSum < validTH -0.2 or ((posData[1][i] - posData[1][i-5]) < 0) and ((posData[1][i]) - posData[1][i+5] < 0 )):
                     plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
@@ -367,13 +390,16 @@ class Step():
         self.descentVelocity = 0
         self.verticalDistance = 0
         self.lastY = 0
+        self.ascentDistance = 0
         self.isHead = isHead
         self.make_data()
 
     def make_data(self):
         self.length = len(self.posData[0])
         self.maxY = max(self.posData[1])
-        self.maxYIndex = np.where(self.posData[1]==self.maxY)[0][0]
+        self.maxYIndex = np.where(self.posData[1] == self.maxY)[0][0]
+        self.ascentDistance = self.maxY - self.posData[1][0]
+
         if self.maxYIndex != 0:
             self.ascentVelocity = (self.maxY - self.posData[1][0]) / (self.maxYIndex * fixedDeltaTime)
         if self.length - self.maxYIndex != 0:
@@ -402,7 +428,7 @@ class Step():
             if self.maxY / avgDict["maxY"] > 1.2 or  self.maxY / avgDict["maxY"] < 0.8 :
                 return True
         if self.isHead:
-            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
+            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.5:
                 return True
             if self.verticalDistance / avgDict["verticalDistance"] < 0.6 or (self.verticalDistance / avgDict["verticalDistance"])> 1.3:
                 return True
@@ -411,6 +437,7 @@ class Step():
     def WriteInfo(self,dict):
         dict["descentVelocity"]+= self.descentVelocity
         dict["ascentVelocity"] += self.ascentVelocity
+        dict["ascentDistance"] += self.ascentDistance
         dict["length"] += self.length
         dict["verticalDistance"] += self.verticalDistance
         dict["lastY"] += self.lastY
@@ -419,6 +446,7 @@ class Step():
     def WriteSD(self,avgdict,sdDict):
         sdDict["descentVelocity"] += (avgdict["descentVelocity"]-self.descentVelocity)**2
         sdDict["ascentVelocity"] += (avgdict["ascentVelocity"]-self.ascentVelocity)**2
+        sdDict["ascentDistance"] += (avgdict["ascentDistance"]-self.ascentDistance)**2
         sdDict["length"] += (avgdict["length"]-self.length)**2
         sdDict["verticalDistance"] += (avgdict["verticalDistance"]-self.verticalDistance)**2
         sdDict["lastY"] += (avgdict["lastY"]-self.lastY)**2
@@ -474,9 +502,11 @@ class StepAnalyzer():
             if self.isDebug:
                 data.DrawGrahp()
             data.SplitStep()
+            #plt.show()
             self.data.append(data)
         if(self.isDebug):
             plt.show()
+        #plt.show()
         return
 
     def AnalyzeHead(self):
@@ -534,6 +564,7 @@ class StepAnalyzer():
     def GetAvgInfo(self,steps):
         infoDict = {"descentVelocity" : 0,
                     "ascentVelocity" : 0,
+                    "ascentDistance" :0,
                     "length" : 0,
                     "verticalDistance" : 0,
                     "lastY":0,
@@ -547,6 +578,7 @@ class StepAnalyzer():
     def GetSDInfo(self,avgInfo,steps):
         infoDict = {"descentVelocity" : 0,
                     "ascentVelocity" : 0,
+                    "ascentDistance" : 0,
                     "length" : 0,
                     "verticalDistance" : 0,
                     "lastY":0,
