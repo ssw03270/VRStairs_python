@@ -2,8 +2,10 @@
 import GraphMaker as g
 import matplotlib.pyplot as plt
 import os
+import csv
 
-folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+#folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
 #data =  g.RecordedData(folder)
 
 #data.DrawGrahp(x = "Distance")
@@ -13,8 +15,26 @@ folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 #folder2 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
 #real = g.RecordedData(folder2,2)
 
+def writeCSV(resultDict,condition):
+    with open("result.csv",'w',encoding="UTF-8",newline="") as f:
+        w = csv.writer(f)
+        order = ["Head 1","Head 2", "First Foot", "Second Foot", "Last Foot"]
+        w.writerow(["",""]+list(resultDict[condition[0]][0][0].keys()))
+        for c in condition:
+            curInfo = resultDict[c]
+            w.writerow([c])
+            i = 0
+            for o in order:
+                w.writerow([o])
+                avg = list(curInfo[0][i].values())
+                sd = list(curInfo[1][i].values())
+                w.writerow(["","avg"]+avg)
+                w.writerow(["","SD"]+sd)
+                i += 1
 
+# condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
 def reader(folderName):
+    result = dict()
     condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
     for c in condition:
         file_list = os.listdir(folderName)
@@ -23,7 +43,8 @@ def reader(folderName):
             for name in file_list:
                 stepFiles.append(folderName + name + "/" + c + "/" + str(i)+ "/")
         print(c)
-        g.StepAnalyzer(stepFiles,True)
+        result[c] = g.StepAnalyzer(stepFiles,False,c).GetResultList()
+    writeCSV(result,condition)
         #plt.show()
 
 def reader1(folderName):
@@ -32,9 +53,10 @@ def reader1(folderName):
         file_list = os.listdir(folderName)
         stepFiles = []
         for i in range(0,10):
-            stepFiles.append(folderName + "홍성은" + "/" + c + "/" + str(i)+ "/")
+            stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i)+ "/")
         print(c)
-        g.StepAnalyzer(stepFiles,False)
+        g.StepAnalyzer(stepFiles,True)
+
 #reader1(folder+"user/")
 reader(folder+"user/")
 #g.RecordedData("C:/Users/Dobby/Documents/GitHub/VRStair/footdata/user/홍성은/stair2_60/9/",2).DrawGrahp()

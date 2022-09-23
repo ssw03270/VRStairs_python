@@ -8,6 +8,7 @@ import random
 import math
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
+import csv
 
 fixedDeltaTime = 0.011111
 #folder = "blendingData/0722-compare/"
@@ -210,7 +211,10 @@ class H2F_Data():
             print(self.fileName," : error no vaild head")
 
     def GetLastHead(self):
-        return self.validHeads[len(self.validHeads)-1]
+        if len(self.validHeads) > 0:
+            return self.validHeads[len(self.validHeads)-1]
+        else:
+            print(self.fileName," : error no vaild head")
 
     def GetFirstStep(self):
         return self.steps[0]
@@ -246,13 +250,27 @@ class H2F_Data():
             self.stepIndexes.append((si, ei, 0))
         # 순서에 맞게 정렬
         self.stepIndexes = sorted(self.stepIndexes)
+        preE = 0
         for s,e,k in self.stepIndexes:
+            if preE > s + 20:
+                preE = e
+                print("error:",self.fileName)
+                self.DrawGrahp()
+                plt.show()
+                continue
             if(k == 1): #Right
                 self.steps.append(Step(self.RFootData,self.RVelData,s,e))
             else:#Left
                 self.steps.append(Step(self.LFootData, self.LVelData, s, e))
             #head
-            h = Step(self.HeadData,self.HeadVelData,s,e,True)
+            hindexes= self.find_head_splitPoint(preE,e,self.HeadData,self.HeadVelData)
+            if(hindexes[1]-hindexes[0] < 1):
+                print(hindexes)
+                self.DrawGrahp()
+                print("error head")
+                plt.show()
+            h = Step(self.HeadData,self.HeadVelData,hindexes[0],hindexes[1],True)
+            preE = e
             if h.verticalDistance > 0.06:
                 self.validHeads.append(h)
                 self.validHeadIndexes.append((s,e))
@@ -261,6 +279,31 @@ class H2F_Data():
             s.DrawStartToMax()
         for s in self.validHeads:
             s.DrawStartToMax()
+
+    def find_head_splitPoint(self,startIndex,endIndex,posData,velData):
+        windowSize = 12
+        validTH = 0.2
+        end = endIndex
+        nextFindIsMove = True
+        nextIndex = 0
+        nextCool = 30 # 머리 떼진 순간 or 발이 닿은 순간을 찾으면 nextCool 프레임 동안은 찾지 않음.
+        validStart = []
+        validEnd = []
+        for i in range(startIndex,endIndex-windowSize):
+            curE = i + windowSize
+            curSum = sum(velData[1][i:i+windowSize])/windowSize
+            if nextIndex > 0:
+                nextIndex -= 1
+                continue
+            if(nextFindIsMove): # 머리가 올라가기 시작하는 순간을 찾음.
+                if(curSum > validTH  and velData[1][i] > 0.1):
+                    plt.scatter(i,posData[1][i])
+                    nextFindIsMove = False
+                    nextIndex = nextCool
+                    validStart.append(i)
+                    return (i,endIndex)
+
+        return (startIndex,endIndex)
 
     def find_splitPoint(self,posData,velData,speedData):
         windowSize = 12
@@ -281,13 +324,13 @@ class H2F_Data():
                 nextIndex -= 1
                 continue
             if(nextFindIsMove): # 발을 떼기 시작하는 순간을 찾음.
-                if(curSum > validTH + 0.1 and velData[1][i] > 0.1):
+                if(curSum > validTH + 0.1 and velData[1][i] > 0.1 and posData[1][i] > 0  and (posData[1][i+5] -posData[1][i]) > 0.01):
                     plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH or ((velData[1][i] - velData[1][i-3]) < 0) and ((velData[1][i]) - velData[1][i+3] < 0 )):
+                if (curSum < validTH - 0.1 or ((posData[1][i] - posData[1][i-3]) < 0) and ((posData[1][i]) - posData[1][i+3] < 0 )):
                     plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
@@ -361,7 +404,7 @@ class Step():
         if self.isHead:
             if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
                 return True
-            if self.verticalDistance / avgDict["verticalDistance"] < 0.5 or (self.verticalDistance / avgDict["verticalDistance"])> 1.3:
+            if self.verticalDistance / avgDict["verticalDistance"] < 0.6 or (self.verticalDistance / avgDict["verticalDistance"])> 1.3:
                 return True
         return False
 
@@ -383,15 +426,18 @@ class Step():
 
 
 class StepAnalyzer():
-    def __init__(self,files,isDebug = False):
+    def __init__(self,files,isDebug = False,condition ="stair1"):
         self.data : H2F_Data = []
         self.firstSteps = []
         self.secondStpes = []
         self.lastSteps = []
         self.firstHeads = []
         self.lastHeads = []
+        self.condition = condition
 
         self.isDebug = isDebug
+        self.avgDicts = []
+        self.sdDicts = []
 
         self.make_steps(files)
         self.AnalyzeHead()
@@ -402,16 +448,35 @@ class StepAnalyzer():
         print("---------------Last Foot------------------")
         self.AnalyzeLastStep()
 
+    def GetResultList(self):
+        return [self.avgDicts,self.sdDicts]
+
+    def writeCSV(self):
+        with open(self.condition +".csv",'w',encoding="UTF-8") as f:
+            w = csv.writer(f)
+            order = ["Head 1","Head 2", "First Foot", "Second Foot", "Last Foot"]
+            i = 0
+            for o in order:
+                w.writerow([o])
+                w.writerow(self.avgDicts[i].keys())
+                w.writerow(self.avgDicts[i].values())
+                w.writerow(self.sdDicts[i].keys())
+                w.writerow(self.sdDicts[i].values())
+                i += 1
+
+
     def make_steps(self,files):
         for file in files:
             if not os.path.exists(file):
                 print(file, ": not exists.")
                 continue
             data = H2F_Data(file)
-            data.DrawGrahp()
+            if self.isDebug:
+                data.DrawGrahp()
             data.SplitStep()
             self.data.append(data)
-        plt.show()
+        if(self.isDebug):
+            plt.show()
         return
 
     def AnalyzeHead(self):
@@ -508,7 +573,11 @@ class StepAnalyzer():
             plt.cla()
         infoDict = self.GetAvgInfo(steps)
         print("After remove OutLier:", infoDict)
-        print("SD",self.GetSDInfo(infoDict,steps))
+        infoDict["total count"] = len(steps)
+        SDDict = self.GetSDInfo(infoDict,steps)
+        print("SD",SDDict)
+        self.avgDicts.append(infoDict)
+        self.sdDicts.append(SDDict)
 
 
 
