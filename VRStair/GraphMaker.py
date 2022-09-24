@@ -184,6 +184,11 @@ class H2F_Data():
         self.validHeads = []
         self.validHeadIndexes = []
 
+        self.beforeFirstStepAvgHeadHeightChange = 0
+        self.firstStepHeadHeightChange = 0
+        self.afterFirstStepHeadHeight = 0
+
+
         if onFilter:
             self.OnFiltering()
 
@@ -198,6 +203,27 @@ class H2F_Data():
             self.LSpeedData.append(math.sqrt(self.LVelData[0][i-1] ** 2 +
                                    self.LVelData[1][i-1] ** 2 +
                                    self.LVelData[2][i-1] ** 2))
+
+        self.firstHeadHeight = self.HeadData[1][0]
+
+    def WriteHeadHeightChange(self,infoDict):
+        firstAvgHead = 0
+        for i in range(0,self.steps[0].validStart):
+            firstAvgHead += self.HeadData[1][i]
+
+        if self.steps[0].validStart > 0:
+            firstAvgHead /= self.steps[0].validStart
+        self.beforeFirstStepAvgHeadHeightChange =  firstAvgHead - self.firstHeadHeight
+        self.firstStepHeadHeightChange =  self.HeadData[1][self.steps[0].validStart] - self.firstHeadHeight
+        self.afterFirstStepHeadHeight = self.HeadData[1][self.steps[0].validEnd] - self.firstHeadHeight
+
+        infoDict["before first step avg head height change"] += self.beforeFirstStepAvgHeadHeightChange
+        infoDict["when first step start head height change"] += self.firstStepHeadHeightChange
+        infoDict["after first step end head height change"] +=  self.afterFirstStepHeadHeight
+        #infoDict["before second step avg head height change"] +=
+
+        return infoDict
+
 
     def OnFiltering(self,windowSize = 51, poly = 6):
         self.RFootData[1] = savgol_filter(self.RFootData[1], windowSize, poly)
@@ -283,7 +309,7 @@ class H2F_Data():
 
     def find_head_splitPoint(self,startIndex,endIndex,posData,velData):
         windowSize = 6
-        validTH = 0.3
+        validTH = 0.2
         end = endIndex
         nextFindIsMove = True
         nextIndex = 0
@@ -302,14 +328,13 @@ class H2F_Data():
                 continue
             if(nextFindIsMove): # 머리가 올라가기 시작하는 순간을 찾음.
                 if(curSum > validTH and velData[1][i] > 0.05):
-                    #print("뭐지",curSum,velData[1][i])
                     plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
 
             else:  # 발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH - 0.15 and velData[1][i] < 0.02):
+                if (curSum < validTH - 0.15 and velData[1][i] < 0.01):
                     plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
@@ -326,7 +351,7 @@ class H2F_Data():
         if len(validStart) == 0:
             return (startIndex,endIndex)
 
-        return (validStart[0],validEnd[0])
+        return (validStart[0],endIndex)
 
     def find_splitPoint(self,posData,velData,speedData):
         windowSize = 14
@@ -369,10 +394,41 @@ class H2F_Data():
 
         return [validStart,validEnd]
 
+    def findCrossPoint(self,start,end):
+        minDistance = 10000
+        minI = 0
+        for i in range(start,end):
+            cur = abs(self.RFootData[1][i] - self.LFootData[1][i])
+            if minDistance == 0:
+                return i
+            if minDistance > cur:
+                minDistance = cur
+                minI = i
+        else:
+            print("not cross")
+            return minI
+
+
     def DrawGrahp(self,color = None, label = None):
         plt.plot(self.RFootData[1][1:], color=color)
         plt.plot(self.LFootData[1][1:], color=color)
         plt.plot(self.HeadData[1][1:], color=color, label=label)
+
+    def DrawGrahp2(self,start,end,color = None, label = None):
+        plt.rc('font', size=10)
+        plt.rc('axes', labelsize=16)
+        plt.grid(True)
+        plt.ylim(0,2)
+        plt.xlim(0,end * fixedDeltaTime)
+        plt.yticks(np.arange(0, 2,0.5))
+        plt.xticks(np.arange(0, end * fixedDeltaTime, 0.5))
+        plt.xlabel('time(s)')
+        plt.ylabel('height(m)')
+        plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.HeadData[1][start:end], color=color, label="neak")
+        plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.LFootData[1][start:end] + 0.05, color=color,label = "left ankle")
+        plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.RFootData[1][start:end] + 0.05, color=color,label = "right ankle")
+
+
 
 
 class Step():
@@ -468,13 +524,32 @@ class StepAnalyzer():
         self.sdDicts = []
 
         self.make_steps(files)
-        self.AnalyzeHead()
-        print("---------------First Foot------------------")
-        self.AnalyzeFirstStep()
-        print("---------------Second Foot------------------")
-        self.AnalyzeSecondStep()
-        print("---------------Last Foot------------------")
-        self.AnalyzeLastStep()
+        #self.GetHeadHeightChange()
+
+        # self.AnalyzeHead()
+        # print("---------------First Foot------------------")
+        # self.AnalyzeFirstStep()
+        # print("---------------Second Foot------------------")
+        # self.AnalyzeSecondStep()
+        # print("---------------Last Foot------------------")
+        # self.AnalyzeLastStep()
+
+    def GetHeadHeightChange(self):
+        infoDict = {"before first step avg head height change":0 ,"when first step start head height change" : 0,"after first step end head height change":0}
+        plt.cla()
+        for d in self.data:
+            d.WriteHeadHeightChange(infoDict)
+            d.DrawGrahp2(0,d.steps[1].validEnd)
+            plt.vlines(d.steps[1].validStart * fixedDeltaTime,0,2,colors="black",linestyles="--")
+            #crossPoint = d.findCrossPoint(d.steps[1].validStart,d.steps[1].validEnd)
+            #plt.scatter(d.steps[1].validStart, d.RFootData[1][d.steps[1].validStart])
+            #plt.scatter(crossPoint * fixedDeltaTime,d.RFootData[1][crossPoint],color = "r",zorder= 3)
+            plt.legend(loc="upper right")
+            plt.show()
+        for v in infoDict.keys():
+            infoDict[v] /= len(self.data)
+
+        print(infoDict)
 
     def GetResultList(self):
         return [self.avgDicts,self.sdDicts]
@@ -739,9 +814,8 @@ class RecordedData():
         if(endIndex == None):
             endIndex = -1
 
-        axes[0].plot(rfoot[1][startIndex:endIndex], color=color,label = "Rfoot")
         axes[0].plot(self.HeadData[1][startIndex:endIndex], color=color, label="head")
-
+        axes[0].plot(rfoot[1][startIndex:endIndex], color=color,label = "Rfoot")
         if(self.Format != 3):
             axes[0].plot(lfoot[1][startIndex:endIndex], color=color,label = "Lfoot")
 
@@ -752,13 +826,13 @@ class RecordedData():
         if self.Format == 3:
             axes[0].plot(self.ankleData[1][startIndex:endIndex], color=color, label="ankle")
 
+        axes[1].plot(self.HeadVelData[startIndex:endIndex],label="head speed")
         axes[1].plot(self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed")
         if (self.Format != 3):
             axes[1].plot(self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed")
-            axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,
-                         label="Lfoot speed - head speed")
-        axes[1].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color,label = "RFoot speed- head speed")
-        axes[1].plot(self.HeadVelData[startIndex:endIndex],label="head speed")
+            #axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,
+        #axes[1].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color,label = "RFoot speed- head speed")
+
 
 
         if self.Format == 3:
