@@ -355,6 +355,7 @@ class H2F_Data():
         return (validStart[0],validEnd[0])
 
     def find_splitPoint(self,posData,velData,speedData):
+        maxVelocity = max(velData[1])
         windowSize = 17
         validTH = 0.42
         end = len(speedData)
@@ -433,23 +434,23 @@ class H2F_Data():
         if sectionIndex > len(self.steps) -1:
             sectionIndex = len(self.steps) -1
         curStep = self.steps[sectionIndex]
-        startIndex = curStep.validStart
+        startIndex = curStep.validStart-10
         endIndex = curStep.validEnd + 10
 
         xAxis = np.array(list(range(0,endIndex - startIndex)))* fixedDeltaTime
         axes[0][i].plot(xAxis,self.HeadData[1][startIndex:endIndex], label="neak" + addedLabel )
-        axes[0][i].plot(xAxis,self.LFootData[1][startIndex:endIndex],label = "left ankle"+ addedLabel)
-        axes[0][i].plot(xAxis,self.RFootData[1][startIndex:endIndex], label = "right ankle" + addedLabel)
+        axes[0][i].plot(xAxis,self.LFootData[1][startIndex:endIndex],label = "ankle(L)"+ addedLabel)
+        axes[0][i].plot(xAxis,self.RFootData[1][startIndex:endIndex], label = "ankle velocity(R)" + addedLabel)
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
         self.LVelData = np.array(self.LVelData)
 
         axes[1][i].plot(xAxis,self.HeadVelData[1][startIndex:endIndex],label="neak velocity" + addedLabel)
-        axes[1][i].plot(xAxis,self.RVelData[1][startIndex:endIndex],label = "left velocity" + addedLabel)
+        axes[1][i].plot(xAxis,self.RVelData[1][startIndex:endIndex],label = "ankle velocity(L)" + addedLabel)
         axes[1][i].plot(xAxis,self.LVelData[1][startIndex:endIndex],label = "right velocity" + addedLabel)
-        axes[1][i].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], label = "Net velocity(L)"+ addedLabel)
-        axes[1][i].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],label = "Net velocity(R)"+ addedLabel)
+        axes[1][i].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], label = "net velocity(L)"+ addedLabel)
+        axes[1][i].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],label = "net velocity(R)"+ addedLabel)
 
 
         axes[0][i].grid(True)
@@ -467,39 +468,42 @@ class H2F_Data():
         if(endIndex == None):
             endIndex = -1
 
-        axes[0].plot(self.HeadData[1][startIndex:endIndex], color=color, label="head")
-        axes[0].plot(rfoot[1][startIndex:endIndex], color=color,label = "Rfoot")
-        axes[0].plot(lfoot[1][startIndex:endIndex], color=color,label = "Lfoot")
+        xAxis = np.array(list(range(0, len(self.RFootData[0])-startIndex-1 ))) * fixedDeltaTime
+
+        axes[0].plot(xAxis,self.HeadData[1][startIndex:endIndex], color=color, label="neak")
+        axes[0].plot(xAxis,lfoot[1][startIndex:endIndex], color=color,label = "ankle(L)")
+        axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "ankle(R)")
 
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
         self.LVelData = np.array(self.LVelData)
-        for step in self.steps:
-            axes[0].scatter(step.validStart, step.posData[1][0])
-            axes[0].vlines(step.validStart, 0, 2,colors="black",linestyles="--")
+        # for step in self.steps:
+        #     axes[0].scatter(step.validStart * fixedDeltaTime, step.posData[1][0])
+        #     axes[0].vlines(step.validStart * fixedDeltaTime, 0, 2,colors="black",linestyles="--")
+        #
+        # for step in self.steps:
+        #     axes[0].scatter(step.validEnd * fixedDeltaTime, step.posData[1][len(step.posData[1]) - 1])
+        #     axes[0].vlines(step.validEnd * fixedDeltaTime,0,2,colors="r",linestyles="--")
+        #
+        # for step in self.steps:
+        #     axes[1].vlines((step.validStart + step.maxYIndex) * fixedDeltaTime, 0, 2, colors="b", linestyles="--")
+        #     axes[0].vlines((step.validStart + step.maxYIndex) * fixedDeltaTime, 0, 2, colors="b", linestyles="--")
+        #     axes[0].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime,0, 2,colors="g", linestyles="--")
+        #     axes[1].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime, 0, 2, colors="g", linestyles="--")
+        #
+        # for head in self.validHeads:
+        #     axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd])
+        #     axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+        #     axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
 
-        for step in self.steps:
-            axes[0].scatter(step.validEnd, step.posData[1][len(step.posData[1]) - 1])
-            axes[0].vlines(step.validEnd,0,2,colors="r",linestyles="--")
+        xAxis = np.array(list(range(0, len(self.RFootData[0]) - startIndex - 2))) * fixedDeltaTime
+        axes[1].plot(xAxis,self.HeadVelData[1][startIndex:endIndex], color=color,label="neck velocity")
+        # axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(L)")
+        # axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(R)")
+        # axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "net velocity(L)")
+        # axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "net velocity(R)")
 
-        for step in self.steps:
-            axes[1].vlines(step.validStart+step.maxYIndex, 0, 2, colors="b", linestyles="--")
-            axes[0].vlines(step.validStart + step.maxVelIndex,0, 2,colors="g", linestyles="--")
-            axes[1].vlines(step.validStart + step.maxVelIndex, 0, 2, colors="g", linestyles="--")
-
-        for head in self.validHeads:
-            axes[0].plot(list(range(head.validStart, head.validEnd)),head.originPos[1][head.validStart:head.validEnd])
-            axes[0].vlines(head.validStart+head.maxVelIndex, 0, 2, colors="y", linestyles="--")
-            axes[1].vlines(head.validStart + head.maxVelIndex, 0, 2, colors="y", linestyles="--")
-
-
-
-        axes[1].plot(self.HeadVelData[1][startIndex:endIndex],label="head velocity")
-        axes[1].plot(self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot velocity")
-        axes[1].plot(self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot velocity")
-        axes[1].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "RFoot velocity- head velocity")
-        axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "LFoot velocity- head velocity")
 
         axes[0].grid(True)
         axes[1].grid(True)
@@ -519,6 +523,8 @@ class Step():
         self.velData = np.array(originVel)[:,validStart:validEnd]
         self.length = 0
         self.maxY = 0
+        self.maxVelTime = 0
+        self.maxVelSlope = 0
         self.maxYIndex = 0
         self.maxVelIndex = 0
         self.maxYVel = 0
@@ -544,6 +550,9 @@ class Step():
             self.descentVelocity = (self.maxY-self.posData[1][self.length-1]) / ((self.length - self.maxYIndex) * fixedDeltaTime)
         self.verticalDistance = self.posData[1][self.length - 1] - self.posData[1][0]
         self.lastY = self.posData[1][self.length-1]
+
+        self.maxVelTime = (self.maxVelIndex) * fixedDeltaTime
+        self.maxVelSlope = (self.maxYVel / self.maxVelTime)
 
 
 
@@ -576,8 +585,10 @@ class Step():
 
     def WriteInfo(self,dict):
         dict["descentVelocity"]+= self.descentVelocity
-        dict["maxVelocity"] += self.maxYVel
         dict["ascentVelocity"] += self.ascentVelocity
+        dict["maxVelocity"] += self.maxYVel
+        dict["maxVelTime"] += self.maxVelTime
+        dict["maxVelSlope"] += self.maxVelSlope
         dict["ascentDistance"] += self.ascentDistance
         dict["length"] += self.length
         dict["verticalDistance"] += self.verticalDistance
@@ -586,8 +597,10 @@ class Step():
 
     def WriteSD(self,avgdict,sdDict):
         sdDict["descentVelocity"] += (avgdict["descentVelocity"]-self.descentVelocity)**2
-        sdDict["maxVelocity"] += (avgdict["maxVelocity"]-self.maxYVel)**2
         sdDict["ascentVelocity"] += (avgdict["ascentVelocity"]-self.ascentVelocity)**2
+        sdDict["maxVelTime"] += (avgdict["maxVelTime"]-self.maxVelTime)**2
+        sdDict["maxVelSlope"] += (avgdict["maxVelSlope"]-self.maxVelSlope)**2
+        sdDict["maxVelocity"] += (avgdict["maxVelocity"]-self.maxYVel)**2
         sdDict["ascentDistance"] += (avgdict["ascentDistance"]-self.ascentDistance)**2
         sdDict["length"] += (avgdict["length"]-self.length)**2
         sdDict["verticalDistance"] += (avgdict["verticalDistance"]-self.verticalDistance)**2
@@ -730,8 +743,10 @@ class StepAnalyzer():
 
     def GetAvgInfo(self,steps):
         infoDict = {"descentVelocity" : 0,
-                    "maxVelocity" : 0,
                     "ascentVelocity" : 0,
+                    "maxVelocity": 0,
+                    "maxVelTime": 0,
+                    "maxVelSlope": 0,
                     "ascentDistance" :0,
                     "length" : 0,
                     "verticalDistance" : 0,
@@ -745,8 +760,10 @@ class StepAnalyzer():
 
     def GetSDInfo(self,avgInfo,steps):
         infoDict = {"descentVelocity" : 0,
-                    "maxVelocity": 0,
                     "ascentVelocity" : 0,
+                    "maxVelocity": 0,
+                    "maxVelTime": 0,
+                    "maxVelSlope": 0,
                     "ascentDistance" : 0,
                     "length" : 0,
                     "verticalDistance" : 0,
@@ -763,7 +780,7 @@ class StepAnalyzer():
     def AnalyzeStep(self,steps):
         infoDict = self.GetAvgInfo(steps)
         print("Before remove OutLier:" ,infoDict)
-        #self.RemoveOutlier(steps,infoDict)
+        self.RemoveOutlier(steps,infoDict)
 
         if(self.isDebug):
             for s in steps:
@@ -822,16 +839,22 @@ class RecordedData():
         self.HeadData = [[]]
         self.LoadHeadData(folderName + "otherData.txt")
 
-        rfoot = savgol_filter(self.RFootData.blendPosData[1], 51, 6)
-        lfoot = savgol_filter(self.LFootData.blendPosData[1], 51, 6)
-        #self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
-        self.RVelData = [0]
-        self.LVelData = [0]
-        self.HeadVelData = [0]
+        rfoot = []
+        lfoot = []
+        for i in range(3):
+            rfoot.append(savgol_filter(self.RFootData.blendPosData[i], 51, 6))
+            lfoot.append(savgol_filter(self.LFootData.blendPosData[i], 51, 6))
 
-        for i in range(1, len(rfoot)):
-            self.RVelData.append((rfoot[i] - rfoot[i - 1]) / 0.0111111)
-            self.LVelData.append((lfoot[i] - lfoot[i - 1]) / 0.0111111)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
+
+        self.RVelData = [[],[],[]]
+        self.LVelData = [[],[],[]]
+        self.HeadVelData = []
+
+        for i in range(1,len(rfoot[0])):
+            for j in range(0,3):
+                self.RVelData[j].append((rfoot[j][i] - rfoot[j][i-1]) / 0.0111111)
+                self.LVelData[j].append((lfoot[j][i] - lfoot[j][i - 1]) / 0.011111)
             self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
 
     def init_2(self,folderName):
@@ -890,8 +913,8 @@ class RecordedData():
         self.HeadData = makeVectorData(d[0].split('\n'),False)
         f.close()
 
-    def DrawPosAndVelGraph(self,color = None, label = None, startIndex = None, endIndex = None):
-        f,axes = plt.subplots(2,1)
+    def DrawPosAndVelGraph(self,axes,color = None, label = None, startIndex = None, endIndex = None):
+
         rfoot = []
         lfoot = []
 
