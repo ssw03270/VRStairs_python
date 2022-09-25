@@ -1,7 +1,3 @@
-#수빈
-#발 움직임 데이터 그래프
-
-
 import numpy as np
 import os
 import random
@@ -302,10 +298,10 @@ class H2F_Data():
                 self.validHeads.append(h)
                 self.validHeadIndexes.append((s,e))
 
-        for s in self.steps:
-            s.DrawStartToMax()
-        for s in self.validHeads:
-            s.DrawStartToMax()
+        # for s in self.steps:
+        #     s.DrawStartToMax()
+        # for s in self.validHeads:
+        #     s.DrawStartToMax()
 
     def find_head_splitPoint(self,startIndex,endIndex,posData,velData):
         windowSize = 6
@@ -328,21 +324,21 @@ class H2F_Data():
                 continue
             if(nextFindIsMove): # 머리가 올라가기 시작하는 순간을 찾음.
                 if(curSum > validTH and velData[1][i] > 0.05):
-                    plt.scatter(i,posData[1][i])
+                    # plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
 
             else:  # 발이 다시 땅에 닿는 순간을 찾음.
                 if (curSum < validTH - 0.15 and velData[1][i] < 0.01):
-                    plt.scatter(i, posData[1][i])
+                    # plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
                     validEnd.append(i)
                     break
         if(not nextFindIsMove): #발이 다시 땅에 닿는 순간을 못찾았다면 맨 마지막 index를 땅에 닿는 인덱스로 넣어줌.
             validEnd.append(end)
-            plt.scatter(end, posData[1][end])
+            # plt.scatter(end, posData[1][end])
 
         if len(validStart) != len(validEnd):
             print("error - valid index")
@@ -373,20 +369,20 @@ class H2F_Data():
                 continue
             if(nextFindIsMove): # 발을 떼기 시작하는 순간을 찾음.
                 if(curSum > validTH + 0.1 and velData[1][i] > 0.1 and posData[1][i] > 0  and (posData[1][i+5] -posData[1][i]) > 0.01):
-                    plt.scatter(i,posData[1][i])
+                    #plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
                 if (curSum < validTH -0.2 or ((posData[1][i] - posData[1][i-5]) < 0) and ((posData[1][i]) - posData[1][i+5] < 0 )):
-                    plt.scatter(i, posData[1][i])
+                    #plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
                     validEnd.append(i)
 
         if(not nextFindIsMove): #발이 다시 땅에 닿는 순간을 못찾았다면 맨 마지막 index를 땅에 닿는 인덱스로 넣어줌.
             validEnd.append(end)
-            plt.scatter(end, posData[1][end])
+            #plt.scatter(end, posData[1][end])
 
         if len(validStart) != len(validEnd):
             print("error - valid index")
@@ -428,8 +424,49 @@ class H2F_Data():
         plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.LFootData[1][start:end] + 0.05, color=color,label = "left ankle")
         plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.RFootData[1][start:end] + 0.05, color=color,label = "right ankle")
 
+    def DrawPosAndVelGraphTimeBased(self, axes, i, color = None, label = None, startIndex = None, endIndex = None):
+        rfoot = self.RFootData
+        lfoot = self.LFootData
+
+        if(startIndex == None):
+            startIndex= 1
+        if(endIndex == None):
+            endIndex = -1
+
+        axes[0][i].plot(self.HeadData[1][startIndex:endIndex], color=color, label="head")
+        axes[0][i].plot(rfoot[1][startIndex:endIndex], color=color,label = "Rfoot")
+        axes[0][i].plot(lfoot[1][startIndex:endIndex], color=color,label = "Lfoot")
+
+        for step in self.steps:
+            axes[0][i].scatter(step.validStart, step.posData[1][0])
+            axes[0][i].scatter(step.validStart, step.posData[1][0])
+
+        for step in self.steps:
+            axes[0][i].scatter(step.validEnd, step.posData[1][len(step.posData[1]) - 1])
+
+        for step in self.steps:
+            axes[0][i].scatter(step.validStart + step.maxYIndex, step.posData[1][step.maxYIndex])
+
+        for head in self.validHeads:
+            axes[0][i].scatter(head.validStart + head.maxYIndex, head.posData[1][head.maxYIndex])
+
+        self.HeadVelData = np.array(self.HeadVelData)
+        self.RVelData = np.array(self.RVelData)
+        self.LVelData = np.array(self.LVelData)
+
+        axes[1][i].plot(self.HeadVelData[1][startIndex:endIndex],label="head velocity")
+        axes[1][i].plot(self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot velocity")
+        axes[1][i].plot(self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot velocity")
+        axes[1][i].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "RFoot velocity- head velocity")
+        axes[1][i].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "LFoot velocity- head velocity")
 
 
+        axes[0][i].grid(True)
+        axes[1][i].grid(True)
+
+        # axes[0][i].legend()
+        # axes[1][i].legend()
+        return
 
 class Step():
     def __init__(self,origin,originVel,validStart,validEnd,isHead = False):
@@ -523,16 +560,18 @@ class StepAnalyzer():
         self.avgDicts = []
         self.sdDicts = []
 
+        self.f, self.axes = plt.subplots(2,2, sharey=True, sharex=True)
+
         self.make_steps(files)
         #self.GetHeadHeightChange()
 
-        # self.AnalyzeHead()
-        # print("---------------First Foot------------------")
-        # self.AnalyzeFirstStep()
-        # print("---------------Second Foot------------------")
-        # self.AnalyzeSecondStep()
-        # print("---------------Last Foot------------------")
-        # self.AnalyzeLastStep()
+        self.AnalyzeHead()
+        print("---------------First Foot------------------")
+        self.AnalyzeFirstStep()
+        print("---------------Second Foot------------------")
+        self.AnalyzeSecondStep()
+        print("---------------Last Foot------------------")
+        self.AnalyzeLastStep()
 
     def GetHeadHeightChange(self):
         infoDict = {"before first step avg head height change":0 ,"when first step start head height change" : 0,"after first step end head height change":0}
@@ -569,19 +608,20 @@ class StepAnalyzer():
 
 
     def make_steps(self,files):
-        for file in files:
+        for file, i in zip(files, range(2)):
             if not os.path.exists(file):
                 print(file, ": not exists.")
                 continue
             data = H2F_Data(file)
-            if self.isDebug:
-                data.DrawGrahp()
             data.SplitStep()
-            #plt.show()
+            if self.isDebug:
+                data.DrawPosAndVelGraphTimeBased(self.axes, i)
+                # plt.show()
+
+
             self.data.append(data)
         if(self.isDebug):
             plt.show()
-        #plt.show()
         return
 
     def AnalyzeHead(self):
@@ -844,6 +884,8 @@ class RecordedData():
         axes[0].legend()
         axes[1].legend()
         return
+
+
     def DrawGrahp(self,x = "Time",color = None, label = None):
         rfoot = []
         lfoot = []
@@ -1348,5 +1390,3 @@ def DrawTrackingDataSet2(folderName):
         #print(RFootData.GetAscentVelocity(), WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
     plt.scatter(ascendingFoot,ascendingHead)
         #print(RFootData.GetAscentVelocity(),WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
-
-

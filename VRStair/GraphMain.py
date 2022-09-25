@@ -5,7 +5,7 @@ import os
 import csv
 
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
-folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+folder = "C:/Users/SeungWon Seo/Documents/user/"
 #data =  g.RecordedData(folder)
 
 #data.DrawGrahp(x = "Distance")
@@ -48,17 +48,17 @@ def reader(folderName):
         #plt.show()
 
 def reader1(folderName):
-    condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
-    for c in condition:
+    # condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
+    condition = ["stair1_60", "stair1_85"]
+    stepFiles = []
+    for i in range(0,10):
         file_list = os.listdir(folderName)
-        stepFiles = []
-        for i in range(0,10):
+        for c in condition:
             stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i)+ "/")
-        print(c)
         g.StepAnalyzer(stepFiles,True)
 
 #reader1(folder+"user/")
-reader(folder+"user/")
+reader1(folder+"user/")
 #g.RecordedData("C:/Users/Dobby/Documents/GitHub/VRStair/footdata/user/홍성은/stair2_60/9/",2).DrawGrahp()
 #plt.show()
 '''
