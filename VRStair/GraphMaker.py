@@ -51,6 +51,7 @@ class Vector3:
         return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
 
 
+
 def loadPosData(flieName):
     f = open(flieName, 'r')
     # 첫번째 pos 의 x,z값을 0으로 해줌.
@@ -278,7 +279,7 @@ class H2F_Data():
         self.stepIndexes = sorted(self.stepIndexes)
         preE = 0
         for s,e,k in self.stepIndexes:
-            if preE > s + 20:
+            if preE > s + 30:
                 #plt.cla()
                 preE = e
                 print("error:",self.fileName)
@@ -293,19 +294,19 @@ class H2F_Data():
             hindexes= self.find_head_splitPoint(preE,e,self.HeadData,self.HeadVelData)
             if(hindexes[1]-hindexes[0] < 1):
                 print(hindexes)
-                self.DrawGrahp()
+                #self.DrawGrahp()
                 print("error head")
-                plt.show()
-            h = Step(self.HeadData,self.HeadVelData,hindexes[0],hindexes[1],True)
+                #plt.show()
+            h = Step(self.HeadData,self.HeadVelData,s,e,True)#Step(self.HeadData,self.HeadVelData,hindexes[0],hindexes[1],True)
             preE = e
             if h.verticalDistance > 0.06:
                 self.validHeads.append(h)
                 self.validHeadIndexes.append((s,e))
 
-        for s in self.steps:
-            s.DrawStartToMax()
-        for s in self.validHeads:
-            s.DrawStartToMax()
+        # for s in self.steps:
+        #     s.DrawStartToMax()
+        # for s in self.validHeads:
+        #     s.DrawStartToMax()
 
     def find_head_splitPoint(self,startIndex,endIndex,posData,velData):
         windowSize = 6
@@ -327,15 +328,15 @@ class H2F_Data():
                 nextIndex -= 1
                 continue
             if(nextFindIsMove): # 머리가 올라가기 시작하는 순간을 찾음.
-                if(curSum > validTH and velData[1][i] > 0.05):
-                    plt.scatter(i,posData[1][i])
+                if(curSum > validTH and velData[1][i] > 0.09):
+                    #plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
 
-            else:  # 발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH - 0.15 and velData[1][i] < 0.01):
-                    plt.scatter(i, posData[1][i])
+            else:  # 머리 움직이지 않는순간
+                if (curSum < validTH - 0.1 and velData[1][i] < 0.07 or (velData[1][i + windowSize] > validTH and velData[1][i] < validTH)):
+                    #plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
                     validEnd.append(i)
@@ -351,11 +352,11 @@ class H2F_Data():
         if len(validStart) == 0:
             return (startIndex,endIndex)
 
-        return (validStart[0],endIndex)
+        return (validStart[0],validEnd[0])
 
     def find_splitPoint(self,posData,velData,speedData):
-        windowSize = 14
-        validTH = 0.4
+        windowSize = 17
+        validTH = 0.42
         end = len(speedData)
         nextFindIsMove = True
         nextIndex = 0
@@ -366,27 +367,27 @@ class H2F_Data():
         for i in range(0,end-windowSize):
             curE = i + windowSize
             curSum = sum(speedData[i:i+windowSize])/windowSize
-
+            curYSum = sum(posData[1][i:i+windowSize])/windowSize
             curVelYSum = sum(velData[1][i:i+windowSize])/windowSize
             if nextIndex > 0:
                 nextIndex -= 1
                 continue
             if(nextFindIsMove): # 발을 떼기 시작하는 순간을 찾음.
-                if(curSum > validTH + 0.1 and velData[1][i] > 0.1 and posData[1][i] > 0  and (posData[1][i+5] -posData[1][i]) > 0.01):
-                    plt.scatter(i,posData[1][i])
+                if(curSum > validTH  and velData[1][i] > 0.07 and posData[1][i] > 0  and (posData[1][i+5] -posData[1][i]) > 0.01):
+                   # plt.scatter(i,posData[1][i])
                     nextFindIsMove = False
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH -0.2 or ((posData[1][i] - posData[1][i-5]) < 0) and ((posData[1][i]) - posData[1][i+5] < 0 )):
-                    plt.scatter(i, posData[1][i])
+                if (curSum < validTH - 0.15 or curYSum < 0.2 or ((posData[1][i] - posData[1][i-5]) < 0) and ((posData[1][i]) - posData[1][i+5] < 0 )):
+                    #plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
                     validEnd.append(i)
 
         if(not nextFindIsMove): #발이 다시 땅에 닿는 순간을 못찾았다면 맨 마지막 index를 땅에 닿는 인덱스로 넣어줌.
             validEnd.append(end)
-            plt.scatter(end, posData[1][end])
+            #plt.scatter(end, posData[1][end])
 
         if len(validStart) != len(validEnd):
             print("error - valid index")
@@ -428,6 +429,83 @@ class H2F_Data():
         plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.LFootData[1][start:end] + 0.05, color=color,label = "left ankle")
         plt.plot(np.array(list(range(start,end)))* fixedDeltaTime,self.RFootData[1][start:end] + 0.05, color=color,label = "right ankle")
 
+    def DrawSectionPosAndVelGraph(self,axes,i,sectionIndex, addedLabel = ""):
+        if sectionIndex > len(self.steps) -1:
+            sectionIndex = len(self.steps) -1
+        curStep = self.steps[sectionIndex]
+        startIndex = curStep.validStart
+        endIndex = curStep.validEnd + 10
+
+        xAxis = np.array(list(range(0,endIndex - startIndex)))* fixedDeltaTime
+        axes[0][i].plot(xAxis,self.HeadData[1][startIndex:endIndex], label="neak" + addedLabel )
+        axes[0][i].plot(xAxis,self.LFootData[1][startIndex:endIndex],label = "left ankle"+ addedLabel)
+        axes[0][i].plot(xAxis,self.RFootData[1][startIndex:endIndex], label = "right ankle" + addedLabel)
+
+        self.HeadVelData = np.array(self.HeadVelData)
+        self.RVelData = np.array(self.RVelData)
+        self.LVelData = np.array(self.LVelData)
+
+        axes[1][i].plot(xAxis,self.HeadVelData[1][startIndex:endIndex],label="neak velocity" + addedLabel)
+        axes[1][i].plot(xAxis,self.RVelData[1][startIndex:endIndex],label = "left velocity" + addedLabel)
+        axes[1][i].plot(xAxis,self.LVelData[1][startIndex:endIndex],label = "right velocity" + addedLabel)
+        axes[1][i].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], label = "Net velocity(L)"+ addedLabel)
+        axes[1][i].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],label = "Net velocity(R)"+ addedLabel)
+
+
+        axes[0][i].grid(True)
+        axes[1][i].grid(True)
+        axes[0][i].legend()
+        axes[1][i].legend()
+
+    def DrawPosAndVelGraph(self,_axes,color = None, label = None, startIndex = None, endIndex = None):
+        axes = _axes
+        rfoot = self.RFootData
+        lfoot = self.LFootData
+
+        if(startIndex == None):
+            startIndex= 0
+        if(endIndex == None):
+            endIndex = -1
+
+        axes[0].plot(self.HeadData[1][startIndex:endIndex], color=color, label="head")
+        axes[0].plot(rfoot[1][startIndex:endIndex], color=color,label = "Rfoot")
+        axes[0].plot(lfoot[1][startIndex:endIndex], color=color,label = "Lfoot")
+
+
+        self.HeadVelData = np.array(self.HeadVelData)
+        self.RVelData = np.array(self.RVelData)
+        self.LVelData = np.array(self.LVelData)
+        for step in self.steps:
+            axes[0].scatter(step.validStart, step.posData[1][0])
+            axes[0].vlines(step.validStart, 0, 2,colors="black",linestyles="--")
+
+        for step in self.steps:
+            axes[0].scatter(step.validEnd, step.posData[1][len(step.posData[1]) - 1])
+            axes[0].vlines(step.validEnd,0,2,colors="r",linestyles="--")
+
+        for step in self.steps:
+            axes[1].vlines(step.validStart+step.maxYIndex, 0, 2, colors="b", linestyles="--")
+            axes[0].vlines(step.validStart + step.maxVelIndex,0, 2,colors="g", linestyles="--")
+            axes[1].vlines(step.validStart + step.maxVelIndex, 0, 2, colors="g", linestyles="--")
+
+        for head in self.validHeads:
+            axes[0].plot(list(range(head.validStart, head.validEnd)),head.originPos[1][head.validStart:head.validEnd])
+            axes[0].vlines(head.validStart+head.maxVelIndex, 0, 2, colors="y", linestyles="--")
+            axes[1].vlines(head.validStart + head.maxVelIndex, 0, 2, colors="y", linestyles="--")
+
+
+
+        axes[1].plot(self.HeadVelData[1][startIndex:endIndex],label="head velocity")
+        axes[1].plot(self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot velocity")
+        axes[1].plot(self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot velocity")
+        axes[1].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "RFoot velocity- head velocity")
+        axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "LFoot velocity- head velocity")
+
+        axes[0].grid(True)
+        axes[1].grid(True)
+        axes[0].legend()
+        axes[1].legend()
+        return
 
 
 
@@ -442,6 +520,8 @@ class Step():
         self.length = 0
         self.maxY = 0
         self.maxYIndex = 0
+        self.maxVelIndex = 0
+        self.maxYVel = 0
         self.ascentVelocity = 0
         self.descentVelocity = 0
         self.verticalDistance = 0
@@ -453,7 +533,9 @@ class Step():
     def make_data(self):
         self.length = len(self.posData[0])
         self.maxY = max(self.posData[1])
+        self.maxYVel = max(self.velData[1])
         self.maxYIndex = np.where(self.posData[1] == self.maxY)[0][0]
+        self.maxVelIndex = np.where(self.velData[1] == self.maxYVel)[0][0]
         self.ascentDistance = self.maxY - self.posData[1][0]
 
         if self.maxYIndex != 0:
@@ -462,6 +544,8 @@ class Step():
             self.descentVelocity = (self.maxY-self.posData[1][self.length-1]) / ((self.length - self.maxYIndex) * fixedDeltaTime)
         self.verticalDistance = self.posData[1][self.length - 1] - self.posData[1][0]
         self.lastY = self.posData[1][self.length-1]
+
+
 
     def DrawStartToMax(self):
         plt.plot(list(range(self.validStart,self.validStart + self.maxYIndex)) ,self.originPos[1][self.validStart:self.validStart + self.maxYIndex])
@@ -492,6 +576,7 @@ class Step():
 
     def WriteInfo(self,dict):
         dict["descentVelocity"]+= self.descentVelocity
+        dict["maxVelocity"] += self.maxYVel
         dict["ascentVelocity"] += self.ascentVelocity
         dict["ascentDistance"] += self.ascentDistance
         dict["length"] += self.length
@@ -501,6 +586,7 @@ class Step():
 
     def WriteSD(self,avgdict,sdDict):
         sdDict["descentVelocity"] += (avgdict["descentVelocity"]-self.descentVelocity)**2
+        sdDict["maxVelocity"] += (avgdict["maxVelocity"]-self.maxYVel)**2
         sdDict["ascentVelocity"] += (avgdict["ascentVelocity"]-self.ascentVelocity)**2
         sdDict["ascentDistance"] += (avgdict["ascentDistance"]-self.ascentDistance)**2
         sdDict["length"] += (avgdict["length"]-self.length)**2
@@ -526,13 +612,14 @@ class StepAnalyzer():
         self.make_steps(files)
         #self.GetHeadHeightChange()
 
-        # self.AnalyzeHead()
-        # print("---------------First Foot------------------")
-        # self.AnalyzeFirstStep()
-        # print("---------------Second Foot------------------")
-        # self.AnalyzeSecondStep()
-        # print("---------------Last Foot------------------")
-        # self.AnalyzeLastStep()
+        self.AnalyzeHead()
+        print("---------------First Foot------------------")
+        self.AnalyzeFirstStep()
+        print("---------------Second Foot------------------")
+        self.AnalyzeSecondStep()
+        print("---------------Last Foot------------------")
+        self.AnalyzeLastStep()
+
 
     def GetHeadHeightChange(self):
         infoDict = {"before first step avg head height change":0 ,"when first step start head height change" : 0,"after first step end head height change":0}
@@ -576,9 +663,10 @@ class StepAnalyzer():
             data = H2F_Data(file)
             if self.isDebug:
                 data.DrawGrahp()
+                #data.DrawPosAndVelGraph()
             data.SplitStep()
-            #plt.show()
             self.data.append(data)
+            #data.DrawGrahp()
         if(self.isDebug):
             plt.show()
         #plt.show()
@@ -609,7 +697,9 @@ class StepAnalyzer():
 
     def AnalyzeFirstStep(self):
         for data in self.data:
-            self.firstSteps.append(data.GetFirstStep())
+            s = data.GetFirstStep()
+            if s:
+                self.firstSteps.append(s)
         if self.isDebug:
             for s in self.firstSteps:
                 s.Draw()
@@ -619,7 +709,9 @@ class StepAnalyzer():
 
     def AnalyzeSecondStep(self):
         for data in self.data:
-            self.secondStpes.append(data.GetSecondStep())
+            s = data.GetSecondStep()
+            if s:
+                self.secondStpes.append(s)
         if self.isDebug:
             for s in self.secondStpes:
                 s.Draw()
@@ -638,6 +730,7 @@ class StepAnalyzer():
 
     def GetAvgInfo(self,steps):
         infoDict = {"descentVelocity" : 0,
+                    "maxVelocity" : 0,
                     "ascentVelocity" : 0,
                     "ascentDistance" :0,
                     "length" : 0,
@@ -652,6 +745,7 @@ class StepAnalyzer():
 
     def GetSDInfo(self,avgInfo,steps):
         infoDict = {"descentVelocity" : 0,
+                    "maxVelocity": 0,
                     "ascentVelocity" : 0,
                     "ascentDistance" : 0,
                     "length" : 0,
@@ -669,7 +763,7 @@ class StepAnalyzer():
     def AnalyzeStep(self,steps):
         infoDict = self.GetAvgInfo(steps)
         print("Before remove OutLier:" ,infoDict)
-        self.RemoveOutlier(steps,infoDict)
+        #self.RemoveOutlier(steps,infoDict)
 
         if(self.isDebug):
             for s in steps:
@@ -844,6 +938,8 @@ class RecordedData():
         axes[0].legend()
         axes[1].legend()
         return
+
+
     def DrawGrahp(self,x = "Time",color = None, label = None):
         rfoot = []
         lfoot = []
