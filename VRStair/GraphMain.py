@@ -5,16 +5,17 @@ import os
 import csv
 
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
-folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
-#folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+#folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
 #data =  g.RecordedData(folder)
 
 #data.DrawGrahp(x = "Distance")
 #data1.DrawGrahp()
 #data2.DrawGrahp()
-#f, axes = plt.subplots(2, 1)
-#virtual = g.RecordedData(folder+"recodingTest/test/",1).DrawPosAndVelGraph(axes)
-#virtual = g.RecordedData(folder+"recodingTest/test60/",1).DrawPosAndVelGraph(axes)
+# f, axes = plt.subplots(2, 1)
+# virtual = g.RecordedData(folder+"recodingTest/test/",1).DrawPosAndVelGraph(axes)
+# virtual = g.RecordedData(folder+"recodingTest/test60/",1).DrawPosAndVelGraph(axes)
+#virtual = g.RecordedData(folder+"recodingTest/sp4/",1).DrawPosAndVelGraph(axes)
 #folder2 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
 #real = g.RecordedData(folder2,2)
 
@@ -53,7 +54,7 @@ def reader(folderName):
     Compare2Result(result["stair2_60"][0], result["stair2_85"][0])
     #Compare2Result(result["stair1_60"][0],result["stair2_60"][0])
     #Compare2Result(result["stair1_85"][0], result["stair2_85"][0])
-    writeCSV(result,condition,"old")
+    writeCSV(result,condition,"new")
         #plt.show()
 
 def reader1(folderName):
@@ -93,16 +94,16 @@ def Compare2Result(avgDict1 ,avgDict2):
 
 
 def analyze(folderName):
-    condition = ["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair2_60","stair1_85","stair2_85"]
-    #condition = ["stair1_60","stair2_60","stair1_85","stair2_85"]
+    #condition = ["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair2_60","stair1_85","stair2_85"]
+    condition = ["stair1_60","stair2_60","stair1_85","stair2_85"]
     cDatas = dict()
     for c in condition:
         print(c)
         file_list = os.listdir(folderName)
         stepFiles = []
         for i in range(0,10):
-            #stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i)+ "/")
-            stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
+            #stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i)+ "/")
+            #stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
         cDatas[c] = g.StepAnalyzer(stepFiles,False)
     #plt.close()
     # print("compare(stair1_100,stair2_100)")
@@ -111,19 +112,20 @@ def analyze(folderName):
     # Compare2Result(cDatas["stair1_85"].avgDicts,cDatas["stair2_85"].avgDicts)
     # print("compare(stair1_60,stair2_60)")
     # Compare2Result(cDatas["stair1_60"].avgDicts,cDatas["stair2_60"].avgDicts)
-    comparePair = ["stair1_100","stair2_30"]
+    comparePair = ["stair1_60","stair2_60"]
     # print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     # Compare2Result(cDatas["stair1_60"].avgDicts, cDatas["stair1_85"].avgDicts)
     # print("-----------------------compare(stair2_60, stair2_85)-----------------------------")
     # Compare2Result(cDatas["stair2_60"].avgDicts, cDatas["stair2_85"].avgDicts)
     print(comparePair)
     Compare2Result(cDatas[comparePair[0]].avgDicts, cDatas[comparePair[1]].avgDicts)
-    f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
+
     for i in range(0,10):
-        #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
+        f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
+        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes)
         #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color="C1")
-        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color= "C0",label=comparePair[0],startIndex= cDatas[comparePair[0]].data[i].steps[0].validStart)
-        cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color= "C1",label=comparePair[1],startIndex= cDatas[comparePair[1]].data[i].steps[0].validStart)
+        #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color= "C0",label=comparePair[0],startIndex= cDatas[comparePair[0]].data[i].steps[0].validStart)
+        #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color= "C1",label=comparePair[1],startIndex= cDatas[comparePair[1]].data[i].steps[0].validStart)
 
         #f, axes = plt.subplots(2, 2, sharey=True, sharex=True)
         # cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,0,1," ("+comparePair[0]+")")
@@ -132,15 +134,15 @@ def analyze(folderName):
         # cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,1,2," ("+comparePair[0]+")")
         # cDatas[comparePair[1]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[1]+")")
         #cDatas[comparePair[2]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[2]+")")
-    plt.show()
+        plt.show()
     #for i in range(0, 10):
     #    cDatas["stair2_30"].data[i].DrawPosAndVelGraph(axes)
 
 
 
 #reader2(folder+"user/")
-#analyze(folder)
-reader(folder+"user/")
+analyze(folder)
+#reader(folder+"user2/")
 #reader1(folder)
 #g.RecordedData("C:/Users/Dobby/Documents/GitHub/VRStair/footdata/서승원/stair1_60/2/",2).DrawPosAndVelGraph()
 #plt.show()

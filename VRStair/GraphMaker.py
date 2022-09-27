@@ -227,9 +227,10 @@ class H2F_Data():
 
 
     def OnFiltering(self,windowSize = 51, poly = 6):
-        self.RFootData[1] = savgol_filter(self.RFootData[1], windowSize, poly)
-        self.LFootData[1] = savgol_filter(self.LFootData[1], windowSize, poly)
-        self.HeadData[1] = savgol_filter(self.HeadData[1], windowSize, poly)
+        for i in range(0,3):
+            self.RFootData[i] = savgol_filter(self.RFootData[i], windowSize, poly)
+            self.LFootData[i] = savgol_filter(self.LFootData[i], windowSize, poly)
+            self.HeadData[i] = savgol_filter(self.HeadData[i], windowSize, poly)
 
     def GetFirstHead(self):
         if len(self.validHeads) > 0:
@@ -492,15 +493,17 @@ class H2F_Data():
         #     axes[0].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime,0, 2,colors="g", linestyles="--")
         #     axes[1].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime, 0, 2, colors="g", linestyles="--")
         #
-        # for head in self.validHeads:
-        #     axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd])
-        #     axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
-        #     axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+        #for head in self.validHeads:
+            #axes[1].vlines(head.startVelIndex * fixedDeltaTime,0,2,colors="y",linestyles="--")
+            #axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd])
+            #axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+            #axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+
 
         xAxis = np.array(list(range(0, len(self.RFootData[0]) - startIndex - 2))) * fixedDeltaTime
-        axes[1].plot(xAxis,self.HeadVelData[1][startIndex:endIndex], color=color,label="neck velocity")
-        # axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(L)")
-        # axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(R)")
+        axes[1].plot(xAxis,self.HeadVelData[1][startIndex:endIndex], color="r",label="neck velocity")
+        axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(L)")
+        axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(R)")
         # axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "net velocity(L)")
         # axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "net velocity(R)")
 
@@ -533,7 +536,10 @@ class Step():
         self.verticalDistance = 0
         self.lastY = 0
         self.ascentDistance = 0
+        self.ascentTime = 0
         self.isHead = isHead
+        self.startVelIndex = 0
+        self.totalDistance = 0
         self.make_data()
 
     def make_data(self):
@@ -543,6 +549,7 @@ class Step():
         self.maxYIndex = np.where(self.posData[1] == self.maxY)[0][0]
         self.maxVelIndex = np.where(self.velData[1] == self.maxYVel)[0][0]
         self.ascentDistance = self.maxY - self.posData[1][0]
+        self.ascentTime = self.maxYIndex * fixedDeltaTime
 
         if self.maxYIndex != 0:
             self.ascentVelocity = (self.maxY - self.posData[1][0]) / (self.maxYIndex * fixedDeltaTime)
@@ -551,10 +558,24 @@ class Step():
         self.verticalDistance = self.posData[1][self.length - 1] - self.posData[1][0]
         self.lastY = self.posData[1][self.length-1]
 
-        self.maxVelTime = (self.maxVelIndex) * fixedDeltaTime
-        self.maxVelSlope = (self.maxYVel / self.maxVelTime)
+        startIndex = self.validStart
+        if abs(self.velData[1][0]) > 0.05:
+            for i in range(self.validStart,0,-1):
+                if abs(self.originVel[1][i]) < 0.05:
+                    startIndex = i;
+                    break
 
-
+        self.maxVelTime = (self.validStart + self.maxVelIndex - startIndex) * fixedDeltaTime
+        self.startVelIndex = startIndex
+        if self.maxVelTime < 0.01:
+            self.maxVelSlope = 0
+        else:
+            self.maxVelSlope = (self.maxYVel / self.maxVelTime)
+        for i in range(1,self.length):
+             curDistance = (self.posData[0][i] -self.posData[0][i-1])**2 \
+                                  + (self.posData[1][i] -self.posData[1][i-1])**2 \
+                                    + (self.posData[1][i] - self.posData[1][i - 1]) ** 2
+             self.totalDistance += math.sqrt(curDistance)
 
     def DrawStartToMax(self):
         plt.plot(list(range(self.validStart,self.validStart + self.maxYIndex)) ,self.originPos[1][self.validStart:self.validStart + self.maxYIndex])
@@ -590,8 +611,10 @@ class Step():
         dict["maxVelTime"] += self.maxVelTime
         dict["maxVelSlope"] += self.maxVelSlope
         dict["ascentDistance"] += self.ascentDistance
+        dict["ascentTime"] += self.ascentTime
         dict["length"] += self.length
         dict["verticalDistance"] += self.verticalDistance
+        dict["totalDistance"] += self.totalDistance
         dict["lastY"] += self.lastY
         dict["maxY"] += self.maxY
 
@@ -602,8 +625,10 @@ class Step():
         sdDict["maxVelSlope"] += (avgdict["maxVelSlope"]-self.maxVelSlope)**2
         sdDict["maxVelocity"] += (avgdict["maxVelocity"]-self.maxYVel)**2
         sdDict["ascentDistance"] += (avgdict["ascentDistance"]-self.ascentDistance)**2
+        sdDict["ascentTime"] += (avgdict["ascentTime"]-self.ascentTime)**2
         sdDict["length"] += (avgdict["length"]-self.length)**2
         sdDict["verticalDistance"] += (avgdict["verticalDistance"]-self.verticalDistance)**2
+        sdDict["totalDistance"] += (avgdict["totalDistance"] - self.totalDistance) ** 2
         sdDict["lastY"] += (avgdict["lastY"]-self.lastY)**2
         sdDict["maxY"] += (avgdict["maxY"]-self.maxY)**2
 
@@ -742,14 +767,16 @@ class StepAnalyzer():
         self.AnalyzeStep(self.lastSteps)
 
     def GetAvgInfo(self,steps):
-        infoDict = {"descentVelocity" : 0,
-                    "ascentVelocity" : 0,
+        infoDict = {"ascentVelocity" : 0,
+                    "ascentDistance" :0,
+                    "ascentTime" : 0,
+                    "descentVelocity": 0,
+                    "length" : 0,
+                    "verticalDistance" : 0,
+                    "totalDistance" : 0,
                     "maxVelocity": 0,
                     "maxVelTime": 0,
                     "maxVelSlope": 0,
-                    "ascentDistance" :0,
-                    "length" : 0,
-                    "verticalDistance" : 0,
                     "lastY":0,
                     "maxY": 0}
         for s in steps:
@@ -759,14 +786,16 @@ class StepAnalyzer():
         return infoDict
 
     def GetSDInfo(self,avgInfo,steps):
-        infoDict = {"descentVelocity" : 0,
-                    "ascentVelocity" : 0,
+        infoDict = {"ascentVelocity" : 0,
+                    "ascentDistance" :0,
+                    "ascentTime" : 0,
+                    "descentVelocity": 0,
+                    "length" : 0,
+                    "verticalDistance" : 0,
+                    "totalDistance" : 0,
                     "maxVelocity": 0,
                     "maxVelTime": 0,
                     "maxVelSlope": 0,
-                    "ascentDistance" : 0,
-                    "length" : 0,
-                    "verticalDistance" : 0,
                     "lastY":0,
                     "maxY": 0}
         for s in steps:
@@ -780,7 +809,7 @@ class StepAnalyzer():
     def AnalyzeStep(self,steps):
         infoDict = self.GetAvgInfo(steps)
         print("Before remove OutLier:" ,infoDict)
-        self.RemoveOutlier(steps,infoDict)
+        #self.RemoveOutlier(steps,infoDict)
 
         if(self.isDebug):
             for s in steps:
@@ -845,7 +874,7 @@ class RecordedData():
             rfoot.append(savgol_filter(self.RFootData.blendPosData[i], 51, 6))
             lfoot.append(savgol_filter(self.LFootData.blendPosData[i], 51, 6))
 
-        self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
+        # self.HeadData[1] = savgol_filter(self.HeadData[1], 51, 3)
 
         self.RVelData = [[],[],[]]
         self.LVelData = [[],[],[]]
@@ -947,7 +976,7 @@ class RecordedData():
         axes[1].plot(self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed")
         if (self.Format != 3):
             axes[1].plot(self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed")
-            #axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,
+        #axes[1].plot(self.LVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex], color=color,label = "LFoot speed- head speed")
         #axes[1].plot(self.RVelData[1][startIndex:endIndex] - self.HeadVelData[startIndex:endIndex],color=color,label = "RFoot speed- head speed")
 
 
