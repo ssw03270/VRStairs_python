@@ -720,16 +720,20 @@ class StepAnalyzer():
 
         self.make_steps(files)
         #self.GetHeadHeightChange()
-        # self.AnalyzeHead()
-        # self.AnalyzeFoot()
-        # self.AnalyzeNetStep()
+        self.AnalyzeHead()
+        self.AnalyzeFoot()
+        self.AnalyzeNetStep()
 
 
     def DrawLengthPerAscent(self,plt,color):
         for d in self.data:
-            if not d.isOutLier:
-                for i in range(1,3):
-                    plt.scatter(d.validHeads[i-1].maxYVel,d.steps[i].startDeltaTimeVelocity,color=color)
+            if not d.isOutLier and len(d.steps) > 2 and len(d.validHeads) > 1:
+                for i in range(1,2):
+                    # plt[0].scatter(d.validHeads[0].maxYVel,d.steps[1].startDeltaTimeVelocity, color="C0")
+                    # plt[0].scatter(d.validHeads[1].maxYVel, d.steps[2].startDeltaTimeVelocity, color="C1")
+                    # plt[0].scatter(d.validHeads[0].ascentVelocity/d.validHeads[0].verticalDistance ,d.steps[1].ascentVelocity/d.steps[0].verticalDistance,color="C0")
+                    # plt[0].scatter(d.validHeads[1].ascentVelocity / d.validHeads[1].verticalDistance,
+                    #                d.steps[2].ascentVelocity / d.validHeads[1].verticalDistance, color="C1")
                 # for head in d.validHeads:
                 #     plt.scatter(head.length,head.ascentTime)
 

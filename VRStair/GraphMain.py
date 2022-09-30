@@ -3,25 +3,18 @@ import GraphMaker as g
 import matplotlib.pyplot as plt
 import os
 import csv
+import numpy as np
 
-folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
-#folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+#folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
+folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 #folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
 #folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
 #data =  g.RecordedData(folder)
 
+
 #data.DrawGrahp(x = "Distance")
 #data1.DrawGrahp()
 #data2.DrawGrahp()
-# f, axes = plt.subplots(2, 1)
-# #virtual = g.RecordedData(folder+"recodingTest/test/",1).DrawPosAndVelGraph(axes)
-# # # virtual = g.RecordedData(folder+"recodingTest/test2/",1).DrawPosAndVelGraph(axes, color="C1")
-# real = g.RecordedData(folder+"real/3/",2).DrawPosAndVelGraph(axes,startIndex=30, color="C1",additionalLabel=" (real)")
-# #my = g.RecordedData(folder+"my/1/",2).DrawPosAndVelGraph(axes,startIndex=30, color="r", additionalLabel= " (my)")
-# my = g.RecordedData(folder+"my/3/",2).DrawPosAndVelGraph(axes,startIndex=30, color="r", additionalLabel= " (my)")
-#virtual = g.RecordedData(folder+"recodingTest/sp4/",1).DrawPosAndVelGraph(axes)
-#folder2 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
-#real = g.RecordedData(folder2,2)
 
 def writeCSV(resultDict,condition,name = "avg"):
     with open(name+".csv",'w',encoding="UTF-8",newline="") as f:
@@ -99,7 +92,7 @@ def Compare2Result(avgDict1 ,avgDict2):
 def lengthCompare(folderName):
     result = dict()
     #condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
-
+    f,axes = plt.subplots(2,1)
     condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
     num = 0
     for c in condition:
@@ -111,7 +104,7 @@ def lengthCompare(folderName):
         print(c)
         sA = g.StepAnalyzer(stepFiles,False,c)
         result[c] = sA.GetResultList()
-        sA.DrawLengthPerAscent(plt,"C"+str(num))
+        sA.DrawLengthPerAscent(axes,"C"+str(num))
         num += 1
 
 def analyze(folderName):
