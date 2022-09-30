@@ -170,7 +170,7 @@ class RecordedFootData():
         f.close()
 
 class H2F_Data():
-    def __init__(self,folderName,onFilter = False):
+    def __init__(self,folderName,onFilter = True):
         self.fileName = folderName
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
@@ -502,8 +502,8 @@ class H2F_Data():
         axes[0].plot(xAxis,self.HeadData[1][startIndex:endIndex], color=color, label="neak")
         axes[0].plot(xAxis,lfoot[1][startIndex:endIndex], color=color,label = "ankle(L)")
         axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "ankle(R)")
-        axes[0].plot(xAxis,self.LNetPosData[1][startIndex:endIndex], color=color, label="net ankle(L)")
-        axes[0].plot(xAxis, self.RNetPosData[1][startIndex:endIndex], color=color, label="net ankle(R)")
+        # axes[0].plot(xAxis,self.LNetPosData[1][startIndex:endIndex], color=color, label="net ankle(L)")
+        # axes[0].plot(xAxis, self.RNetPosData[1][startIndex:endIndex], color=color, label="net ankle(R)")
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
@@ -535,10 +535,14 @@ class H2F_Data():
         # axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "net velocity(L)")
         # axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "net velocity(R)")
 
-        # for s in self.steps:
-        #     xAxis = np.array(list(range(s.validStart + s.startDeltaIndex, s.validStart + s.startDeltaIndex + startDeltaLength))) * fixedDeltaTime
-        #     axes[0].plot(xAxis, s.posData[1][s.startDeltaIndex:s.startDeltaIndex + startDeltaLength], color="black")
-        #     axes[1].plot(xAxis,s.velData[1][s.startDeltaIndex:s.startDeltaIndex+startDeltaLength],color="black")
+        for s in self.steps:
+            xAxis = np.array(list(range(s.validStart + s.startDeltaIndex, s.validStart + s.startDeltaIndex + startDeltaLength))) * fixedDeltaTime
+            axes[0].plot(xAxis, s.posData[1][s.startDeltaIndex:s.startDeltaIndex + startDeltaLength], color="black")
+            axes[1].plot(xAxis,s.velData[1][s.startDeltaIndex:s.startDeltaIndex+startDeltaLength],color="black")
+            xAxis = np.array(list(range(s.startVelIndex ,s.startVelIndex + startDeltaLength))) * fixedDeltaTime
+            axes[0].plot(xAxis, s.originPos[1][s.startVelIndex:s.startVelIndex + startDeltaLength], color="y")
+            axes[1].plot(xAxis,s.originVel[1][s.startVelIndex:s.startVelIndex + startDeltaLength],color="y")
+
         #
         # for s in self.netSteps:
         #     xAxis = np.array(list(range(s.validStart + s.startDeltaIndex, s.validStart + s.startDeltaIndex + startDeltaLength))) * fixedDeltaTime
@@ -578,6 +582,7 @@ class Step():
         self.isHead = isHead
         self.startVelIndex = 0
         self.totalDistance = 0
+        self.afterCrossVelocity = 1
         self.startDeltaTimeVelocity = 1
         self.startDeltaIndex = 1
         self.make_data()
@@ -599,14 +604,15 @@ class Step():
         self.lastY = self.posData[1][self.length-1]
 
         startIndex = self.validStart
-        if abs(self.velData[1][0]) > 0.05:
+        if abs(self.velData[1][0]) > 0.1:
             for i in range(self.validStart,0,-1):
-                if abs(self.originVel[1][i]) < 0.05:
+                if abs(self.originVel[1][i]) < 0.1:
                     startIndex = i;
                     break
 
         self.maxVelTime = (self.validStart + self.maxVelIndex - startIndex) * fixedDeltaTime
         self.startVelIndex = startIndex
+
         if self.maxVelTime < 0.01:
             self.maxVelSlope = 0
         else:
@@ -617,6 +623,8 @@ class Step():
                                     + (self.posData[1][i] - self.posData[1][i - 1]) ** 2
              self.totalDistance += math.sqrt(curDistance)
 
+        self.startDeltaTimeVelocity = (self.originPos[1][self.startVelIndex + startDeltaLength]- self.originPos[1][self.startVelIndex]) / startDeltaLength / fixedDeltaTime
+
         if(not self.isHead):
             startIndex = 0
             for i in range(self.validStart,self.validEnd - startDeltaLength):
@@ -624,7 +632,7 @@ class Step():
                     startIndex = i - self.validStart
                     break
             self.startDeltaIndex = startIndex
-            self.startDeltaTimeVelocity = (self.posData[1][startIndex + startDeltaLength]- self.posData[1][startIndex]) / fixedDeltaTime/startDeltaLength
+            self.afterCrossVelocity = (self.posData[1][startIndex + startDeltaLength]- self.posData[1][startIndex]) / fixedDeltaTime/startDeltaLength
 
 
     def DrawStartToMax(self):
@@ -668,6 +676,7 @@ class Step():
         dict["lastY"] += self.lastY
         dict["maxY"] += self.maxY
         dict["startDeltaTimeVelocity"] += self.startDeltaTimeVelocity
+        dict["afterCrossVelocity"] += self.afterCrossVelocity
 
     def WriteSD(self,avgdict,sdDict):
         sdDict["descentVelocity"] += (avgdict["descentVelocity"]-self.descentVelocity)**2
@@ -682,7 +691,8 @@ class Step():
         sdDict["totalDistance"] += (avgdict["totalDistance"] - self.totalDistance) ** 2
         sdDict["lastY"] += (avgdict["lastY"]-self.lastY)**2
         sdDict["maxY"] += (avgdict["maxY"]-self.maxY)**2
-        sdDict["startDeltaTimeVelocity"] += (avgdict["startDeltaTimeVelocity"]-self.startDeltaTimeVelocity)**2
+        sdDict["startDeltaTimeVelocity"] +=  (avgdict["startDeltaTimeVelocity"]-self.maxY)**2
+        sdDict["afterCrossVelocity"] += (avgdict["afterCrossVelocity"]-self.afterCrossVelocity)**2
 
 
 class StepAnalyzer():
@@ -711,7 +721,7 @@ class StepAnalyzer():
         self.AnalyzeSecondStep()
         print("---------------Last Foot------------------")
         self.AnalyzeLastStep()
-        #self.AnalyzeNetStep()
+        self.AnalyzeNetStep()
 
 
     def GetHeadHeightChange(self):
@@ -844,7 +854,8 @@ class StepAnalyzer():
                     "maxVelSlope": 0,
                     "lastY":0,
                     "maxY": 0,
-                    "startDeltaTimeVelocity":0}
+                    "startDeltaTimeVelocity":0,
+                    "afterCrossVelocity" : 0}
         for s in steps:
             s.WriteInfo(infoDict)
         for v in infoDict.keys():
@@ -864,7 +875,8 @@ class StepAnalyzer():
                     "maxVelSlope": 0,
                     "lastY":0,
                     "maxY": 0,
-                    "startDeltaTimeVelocity":0}
+                    "startDeltaTimeVelocity":0,
+                    "afterCrossVelocity" : 0}
         for s in steps:
             s.WriteSD(avgInfo,infoDict)
         for v in infoDict.keys():
