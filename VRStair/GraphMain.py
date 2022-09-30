@@ -5,8 +5,9 @@ import os
 import csv
 
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
-folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+#folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 #folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
 #data =  g.RecordedData(folder)
 
 #data.DrawGrahp(x = "Distance")
@@ -57,7 +58,7 @@ def reader(folderName):
     print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     Compare2Result(result["stair1_50"][0], result["stair1_75"][0])
 
-    writeCSV(result,condition,"new_3")
+    writeCSV(result,condition,"new5")
         #plt.show()
 
 def reader1(folderName):
@@ -98,16 +99,18 @@ def Compare2Result(avgDict1 ,avgDict2):
 
 def analyze(folderName):
     #condition = ["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair2_60","stair1_85","stair2_85"]
-    condition = ["stair1_50","stair2_50","stair1_75","stair2_75"]
+    condition = ["stair1_50","stair2_50","stair1_75","stair2_75","stair1_100","stair2_100"]
     cDatas = dict()
     for c in condition:
         print(c)
         file_list = os.listdir(folderName)
         stepFiles = []
-        for i in range(0,20):
+        for i in range(0,10):
             stepFiles.append(folderName + "서민영" + "/" + c + "/" + str(i)+ "/")
             stepFiles.append(folderName + "이철우" + "/" + c + "/" + str(i) + "/")
             stepFiles.append(folderName + "박주현" + "/" + c + "/" + str(i) + "/")
+            stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i) + "/")
+            stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
         cDatas[c] = g.StepAnalyzer(stepFiles,False)
     #plt.close()
     # print("compare(stair1_100,stair2_100)")
@@ -116,7 +119,7 @@ def analyze(folderName):
     # Compare2Result(cDatas["stair1_85"].avgDicts,cDatas["stair2_85"].avgDicts)
     # print("compare(stair1_60,stair2_60)")
     # Compare2Result(cDatas["stair1_60"].avgDicts,cDatas["stair2_60"].avgDicts)
-    comparePair = ["stair1_50","stair1_75"]
+    comparePair = ["stair2_100","stair1_75"]
     # print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     # Compare2Result(cDatas["stair1_60"].avgDicts, cDatas["stair1_85"].avgDicts)
     # print("-----------------------compare(stair2_60, stair2_85)-----------------------------")
@@ -127,7 +130,7 @@ def analyze(folderName):
     for i in range(0,10):
         f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
-        cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes, color="C1")
+        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes, color="C1")
         #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color="C1")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color= "C0",label=comparePair[0],startIndex= cDatas[comparePair[0]].data[i].steps[0].validStart)
         #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color= "C1",label=comparePair[1],startIndex= cDatas[comparePair[1]].data[i].steps[0].validStart)
@@ -149,60 +152,9 @@ def analyze(folderName):
 #analyze(folder+"user3/")
 reader(folder+"user3/")
 #reader1(folder)
-#g.RecordedData("C:/Users/Dobby/Documents/GitHub/VRStair/footdata/서승원/stair1_60/2/",2).DrawPosAndVelGraph()
+# f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
+# g.RecordedData(folder+"user3/서민영/stair2_100/0/",2).DrawPosAndVelGraph(axes)
 #plt.show()
-'''
-file_list = os.listdir(folder + "user/")
-print(file_list)
-names = ["김민정","황준태"]
-
-stair1 = []
-for i in range(0,10):
-    for n in names:
-        stair1.append("foot_dataset/real_data/"+n+ "/stair1/" + str(i) + "/")
-print("stair1")
-g.StepAnalyzer(stair1,True)
-
-
-stair1_60 = []
-for i in range(0,10):
-    for n in names:
-        stair1_60.append("foot_dataset/real_data/"+n+ "/stair1_60/" + str(i) + "/")
-
-stair1_85 = []
-for i in range(0,10):
-    for n in names:
-        stair1_85.append("foot_dataset/real_data/"+n+ "/stair1_85/" + str(i) + "/")
-
-stair2 = []
-for i in range(0,10):
-    for n in names:
-        stair2.append("foot_dataset/real_data/"+n+ "/stair2/" + str(i) + "/")
-
-stair2_60 = []
-for i in range(0,10):
-    for n in names:
-        stair2_60.append("foot_dataset/real_data/"+n+ "/stair2_60/" + str(i) + "/")
-
-stair2_85 = []
-for i in range(0,10):
-    for n in names:
-        stair2_85.append("foot_dataset/real_data/"+n+ "/stair2_85/" + str(i) + "/")
-'''
-
-# print("stair2")
-# g.StepAnalyzer(stair2)
-# print("stair1_60")
-# g.StepAnalyzer(stair1_60)
-# print("stair2_60")
-# g.StepAnalyzer(stair2_60)
-# print("stair1_85")
-# g.StepAnalyzer(stair1_85)
-# print("stair2_85")
-# g.StepAnalyzer(stair2_85)
-
-#g.StepAnalyzer(files1)
-
 
 
 #Stair1.DrawGrahp(color= "C3")

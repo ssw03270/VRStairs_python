@@ -195,6 +195,7 @@ class H2F_Data():
         self.beforeFirstStepAvgHeadHeightChange = 0
         self.firstStepHeadHeightChange = 0
         self.afterFirstStepHeadHeight = 0
+        self.isOutLier = False
         self.myVelTest = False
 
         if onFilter:
@@ -306,13 +307,14 @@ class H2F_Data():
         self.stepIndexes = sorted(self.stepIndexes)
         preE = 0
         for s,e,k in self.stepIndexes:
-            if preE > s + 30:
-                #plt.cla()
-                preE = e
-                print("error:",self.fileName)
-                #self.DrawGrahp()
-                #plt.show()
-                continue
+            if preE > s +5:
+                #preE = e
+                #print("error- 뛰어가는중!!!!!!:",self.fileName)
+                if len(self.validHeads) > 0:
+                    #print("error- 고치자!!!!!!:",self.fileName)
+                    self.validHeads[len(self.validHeads)-1].validEnd = s
+                    self.validHeads[len(self.validHeads)-1].make_data()
+                #continue
             if(k == 1): #Right
                 self.steps.append(Step(self,self.RFootData,self.RVelData,s,e))
                 self.netSteps.append(Step(self,self.RNetPosData,self.RNetVelData,s,e))
@@ -320,13 +322,8 @@ class H2F_Data():
                 self.steps.append(Step(self,self.LFootData, self.LVelData, s, e))
                 self.netSteps.append(Step(self,self.LNetPosData, self.LNetVelData, s, e))
             #head
-            hindexes= self.find_head_splitPoint(preE,e,self.HeadData,self.HeadVelData)
-            if(hindexes[1]-hindexes[0] < 1):
-                print(hindexes)
-                #self.DrawGrahp()
-                print("error head")
-                #plt.show()
-            h = Step(self,self.HeadData,self.HeadVelData,s,e,True)#Step(self.HeadData,self.HeadVelData,hindexes[0],hindexes[1],True)
+            #hindexes= self.find_head_splitPoint(preE,e,self.HeadData,self.HeadVelData)
+            h = Step(self,self.HeadData,self.HeadVelData,s,e,True)
             preE = e
             if h.verticalDistance > 0.06:
                 self.validHeads.append(h)
@@ -409,7 +406,8 @@ class H2F_Data():
                     nextIndex = nextCool
                     validStart.append(i)
             else: #발이 다시 땅에 닿는 순간을 찾음.
-                if (curSum < validTH - 0.15 or curYSum < 0.2 or ((posData[1][i] - posData[1][i-5]) < 0) and ((posData[1][i]) - posData[1][i+5] < 0 )):
+                #or curYSum < 0.2 or ((posData[1][i] - posData[1][i-5]) < 0) and ((posData[1][i]) - posData[1][i+5] < 0 )
+                if (curSum < validTH - 0.15 and abs(velData[1][i]) < 0.1):
                     #plt.scatter(i, posData[1][i])
                     nextFindIsMove = True
                     nextIndex = nextCool
@@ -508,25 +506,26 @@ class H2F_Data():
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
         self.LVelData = np.array(self.LVelData)
-        # for step in self.steps:
-        #     axes[0].scatter(step.validStart * fixedDeltaTime, step.posData[1][0])
-        #     axes[0].vlines(step.validStart * fixedDeltaTime, 0, 2,colors="black",linestyles="--")
-        #
-        # for step in self.steps:
-        #     axes[0].scatter(step.validEnd * fixedDeltaTime, step.posData[1][len(step.posData[1]) - 1])
-        #     axes[0].vlines(step.validEnd * fixedDeltaTime,0,2,colors="r",linestyles="--")
-        #
+        for step in self.steps:
+            axes[0].scatter(step.validStart * fixedDeltaTime, step.posData[1][0])
+            # axes[0].vlines(step.validStart * fixedDeltaTime, 0, 2,colors="black",linestyles="--")
+
+        for step in self.steps:
+            axes[0].scatter(step.validEnd * fixedDeltaTime, step.posData[1][len(step.posData[1]) - 1])
+            # axes[0].vlines(step.validEnd * fixedDeltaTime,0,2,colors="r",linestyles="--")
+
         # for step in self.steps:
         #     axes[1].vlines((step.validStart + step.maxYIndex) * fixedDeltaTime, 0, 2, colors="b", linestyles="--")
         #     axes[0].vlines((step.validStart + step.maxYIndex) * fixedDeltaTime, 0, 2, colors="b", linestyles="--")
         #     axes[0].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime,0, 2,colors="g", linestyles="--")
         #     axes[1].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime, 0, 2, colors="g", linestyles="--")
-        #
-        #for head in self.validHeads:
-            #axes[1].vlines(head.startVelIndex * fixedDeltaTime,0,2,colors="y",linestyles="--")
-            #axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd])
-            #axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
-            #axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+
+        for head in self.validHeads:
+            axes[1].vlines(head.startVelIndex * fixedDeltaTime,0,2,colors="y",linestyles="--")
+            axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd],color="indigo")
+            axes[0].scatter(head.validEnd * fixedDeltaTime, head.posData[1][head.length-1])
+            # axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+            # axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
 
         xAxis = np.array(list(range(0, len(self.RFootData[0]) - startIndex - 1))) * fixedDeltaTime
         axes[1].plot(xAxis,self.HeadVelData[1][startIndex:endIndex], color="r",label="neck velocity")
@@ -566,6 +565,7 @@ class Step():
         self.validEnd = validEnd
         self.posData = np.array(originPos)[:,validStart:validEnd]
         self.velData = np.array(originVel)[:,validStart:validEnd]
+        self.isNet = False
         self.length = 0
         self.maxY = 0
         self.maxVelTime = 0
@@ -588,6 +588,8 @@ class Step():
         self.make_data()
 
     def make_data(self):
+        self.posData = np.array(self.originPos)[:,self.validStart:self.validEnd]
+        self.velData = np.array(self.originVel)[:,self.validStart:self.validEnd]
         self.length = len(self.posData[0])
         self.maxY = max(self.posData[1])
         self.maxYVel = max(self.velData[1])
@@ -639,26 +641,33 @@ class Step():
         plt.plot(list(range(self.validStart,self.validStart + self.maxYIndex)) ,self.originPos[1][self.validStart:self.validStart + self.maxYIndex])
 
     def Draw(self):
+        plt.plot(self.originPos[1][0:],color="r")
         plt.plot(list(range(self.validStart, self.validEnd)),
                  self.originPos[1][self.validStart:self.validEnd])
         plt.plot(list(range(self.validStart, self.validStart + self.maxYIndex)),
                  self.originPos[1][self.validStart:self.validStart + self.maxYIndex],color="gold")
+
         plt.scatter(self.validStart-1 + self.maxYIndex,self.maxY)
 
-    def IsOutlier(self,avgDict):
+    def IsOutlier(self,avgDict,SDDict):
         if not self.isHead:
-            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.4:
+            if self.length/avgDict["length"] < 0.4 or self.length/avgDict["length"] > 2 or abs(self.length - avgDict["length"]) > 3 * SDDict["length"]:
+                print("length out lier")
                 return True
-            if self.verticalDistance/avgDict["verticalDistance"] < 0.5 or self.verticalDistance/avgDict["verticalDistance"] > 1.3:
+            if self.verticalDistance/avgDict["verticalDistance"] < 0.3 \
+                    or self.verticalDistance/avgDict["verticalDistance"] > 2 \
+                    or abs(self.verticalDistance - avgDict["verticalDistance"]) > 3 * SDDict["verticalDistance"]:
+                print("verticalDistance out lier")
                 return True
-            if abs(self.lastY - avgDict["lastY"]) > 0.1:
-                return True
-            if self.maxY / avgDict["maxY"] > 1.2 or  self.maxY / avgDict["maxY"] < 0.8 :
+            if abs(self.maxY - avgDict["maxY"]) > 3 * SDDict["maxY"] :
+                print("maxY out lier")
                 return True
         if self.isHead:
-            if self.length/avgDict["length"] < 0.6 or self.length/avgDict["length"] > 1.5:
+            if self.length/avgDict["length"] < 0.5 or self.length/avgDict["length"] > 2 or abs(self.length - avgDict["length"]) > 3 * SDDict["length"]:
                 return True
-            if self.verticalDistance / avgDict["verticalDistance"] < 0.6 or (self.verticalDistance / avgDict["verticalDistance"])> 1.3:
+            if self.verticalDistance / avgDict["verticalDistance"] < 0.3 \
+                    or (self.verticalDistance / avgDict["verticalDistance"])> 1.4 or \
+                    abs(self.verticalDistance - avgDict["verticalDistance"]) > 3 * SDDict["verticalDistance"]:
                 return True
         return False
 
@@ -700,9 +709,6 @@ class StepAnalyzer():
              "Net speed(last)"]
     def __init__(self,files,isDebug = False,condition ="stair1"):
         self.data : H2F_Data = []
-        self.firstSteps = []
-        self.secondStpes = []
-        self.lastSteps = []
         self.firstHeads = []
         self.lastHeads = []
         self.condition = condition
@@ -715,12 +721,7 @@ class StepAnalyzer():
         #self.GetHeadHeightChange()
 
         self.AnalyzeHead()
-        print("---------------First Foot------------------")
-        self.AnalyzeFirstStep()
-        print("---------------Second Foot------------------")
-        self.AnalyzeSecondStep()
-        print("---------------Last Foot------------------")
-        self.AnalyzeLastStep()
+        self.AnalyzeFoot()
         self.AnalyzeNetStep()
 
 
@@ -774,14 +775,39 @@ class StepAnalyzer():
         #plt.show()
         return
 
+    def AnalyzeFoot(self):
+        curSteps = [[],[],[]]
+        for data in self.data:
+            if len(data.steps) == 3:
+                for i in range(len(data.steps)):
+                    s = data.steps[i]
+                    if s:
+                        curSteps[i].append(s)
+        for i in range(3):
+            print("-------------Foot" + str(i) + "------------")
+            if self.isDebug:
+                for s in curSteps[i]:
+                    s.Draw()
+                plt.show()
+            self.AnalyzeStep(curSteps[i])
+
     def AnalyzeNetStep(self):
         netSteps =[[],[]]
         for data in self.data:
-            netSteps[0].append(data.netSteps[1])
-            netSteps[1].append(data.netSteps[len(data.netSteps)-1])
+            if not data.isOutLier:
+                netSteps[0].append(data.netSteps[1])
+                netSteps[1].append(data.netSteps[len(data.netSteps)-1])
 
         print("-------------Net speed2------------")
+        if self.isDebug:
+            for s in netSteps[0]:
+                s.Draw()
+            plt.show()
         self.AnalyzeStep(netSteps[0],False)
+        if self.isDebug:
+            for s in netSteps[1]:
+                s.Draw()
+            plt.show()
         print("-------------Net speed3------------")
         self.AnalyzeStep(netSteps[1],False)
 
@@ -808,38 +834,7 @@ class StepAnalyzer():
             plt.show()
         self.AnalyzeStep(self.lastHeads)
 
-    def AnalyzeFirstStep(self):
-        for data in self.data:
-            s = data.GetFirstStep()
-            if s:
-                self.firstSteps.append(s)
-        if self.isDebug:
-            for s in self.firstSteps:
-                s.Draw()
-            plt.show()
-        self.AnalyzeStep(self.firstSteps)
 
-
-    def AnalyzeSecondStep(self):
-        for data in self.data:
-            s = data.GetSecondStep()
-            if s:
-                self.secondStpes.append(s)
-        if self.isDebug:
-            for s in self.secondStpes:
-                s.Draw()
-            plt.show()
-        self.AnalyzeStep(self.secondStpes)
-
-
-    def AnalyzeLastStep(self):
-        for data in self.data:
-            self.lastSteps.append(data.GetLastStep())
-        if self.isDebug:
-            for s in self.lastSteps:
-                s.Draw()
-            plt.show()
-        self.AnalyzeStep(self.lastSteps)
 
     def GetAvgInfo(self,steps):
         infoDict = {"ascentVelocity" : 0,
@@ -885,11 +880,12 @@ class StepAnalyzer():
         return infoDict
 
 
-    def AnalyzeStep(self,steps,removeOutLier = False):
+    def AnalyzeStep(self,steps,removeOutLier = True):
         infoDict = self.GetAvgInfo(steps)
+        SDDict = self.GetSDInfo(infoDict, steps)
         print("Before remove OutLier:" ,infoDict)
         if removeOutLier:
-            self.RemoveOutlier(steps,infoDict)
+            self.RemoveOutlier(steps,infoDict,SDDict)
 
         if(self.isDebug):
             for s in steps:
@@ -909,11 +905,12 @@ class StepAnalyzer():
 
 
 
-    def RemoveOutlier(self,steps,infoDict):
+    def RemoveOutlier(self,steps,infoDict,SDDict):
         rList =[]
         for i in range(len(steps)):
-            if(steps[i].IsOutlier(infoDict)):
+            if(steps[i].IsOutlier(infoDict,SDDict)):
                 steps[i].Draw()
+                steps[i].origin.isOutLier = True
                 rList.append(i)
         if self.isDebug:
             plt.title("OutLier")
