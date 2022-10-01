@@ -116,11 +116,11 @@ def analyze(folderName):
         file_list = os.listdir(folderName)
         stepFiles = []
         for i in range(0,10):
-            #stepFiles.append(folderName + "서민영" + "/" + c + "/" + str(i)+ "/")
-            #stepFiles.append(folderName + "이철우" + "/" + c + "/" + str(i) + "/")
-            #stepFiles.append(folderName + "박주현" + "/" + c + "/" + str(i) + "/")
+            stepFiles.append(folderName + "서민영" + "/" + c + "/" + str(i)+ "/")
+            stepFiles.append(folderName + "이철우" + "/" + c + "/" + str(i) + "/")
+            stepFiles.append(folderName + "박주현" + "/" + c + "/" + str(i) + "/")
             stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i) + "/")
-            #stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
+            stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
         cDatas[c] = g.StepAnalyzer(stepFiles,False)
     #plt.close()
     # print("compare(stair1_100,stair2_100)")
@@ -129,7 +129,7 @@ def analyze(folderName):
     # Compare2Result(cDatas["stair1_85"].avgDicts,cDatas["stair2_85"].avgDicts)
     # print("compare(stair1_60,stair2_60)")
     # Compare2Result(cDatas["stair1_60"].avgDicts,cDatas["stair2_60"].avgDicts)
-    comparePair = ["stair1_50","stair1_75"]
+    comparePair = ["stair1_75","stair1_75"]
     # print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     # Compare2Result(cDatas["stair1_60"].avgDicts, cDatas["stair1_85"].avgDicts)
     # print("-----------------------compare(stair2_60, stair2_85)-----------------------------")
@@ -164,9 +164,9 @@ def analyze(folderName):
 #     g.RecordedData(folder + "user3/서승원/stair1_50/" + str(i) + "/", 2).DrawPosAndVelGraph(axes,color="gold")
 #     plt.show()
 
-lengthCompare(folder+"user3/")
+#lengthCompare(folder+"user3/")
 #reader2(folder+"user/")
-#analyze(folder+"user3/")
+analyze(folder+"user3/")
 #reader(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)

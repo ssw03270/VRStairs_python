@@ -2,8 +2,12 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 
-max_velocity = 1
-h = 0.24
+def linear_regression(x):
+    w = 3.8329531198263145
+    b = 0.0667026156828887
+    return w * x + b
+
+width = 0.011111
 
 
 def erf(x):
@@ -17,15 +21,15 @@ def f(z, std):
     output = output * math.pow(math.e, (-1/2) * math.pow(z / std, 2))
     return output
 
-def normal_distribution(x, std):
+def normal_distribution(x, std, h, max_velocity):
     return 1 / (std * math.sqrt(2*math.pi)) * math.pow(math.e, -math.pow(x/std,2)/2) * h
 
-def f_cdf(x, std):
+def f_cdf(x, std, h, max_velocity):
     out = 0
     range = np.arange(0, abs(x), width)
     result = 0
     for j in range:
-        out += normal_distribution(j, std) * width
+        out += normal_distribution(j, std, h, max_velocity) * width
     if x > 0:
         result = out + 1/2
     else:
@@ -34,66 +38,85 @@ def f_cdf(x, std):
     return result
 
 
-def skewGaussian(x,location, scale, shape, std):
+def skewGaussian(x, location, scale, shape, std, h, max_velocity):
     x = (x - location) / scale
-    output = 2 / scale * normal_distribution(x, std) * f_cdf(shape*x, std)
+    output = 2 / scale * normal_distribution(x, std, h, max_velocity) * f_cdf(shape*x, std, h, max_velocity)
     return output
 
+def calcGaussian(push, foot_velocity, stair_height):
+    start_velocity = foot_velocity
+    max_velocity = linear_regression(start_velocity)
+    h = stair_height
 
-arr = []
-width = 0.011111
-#range = np.arange(-1, 1, width)
+    arr = []
+    #range = np.arange(-1, 1, width)
 
-ans = 0
-ans2 = 0
-i = 0
+    ans = 0
+    ans2 = 0
+    i = 0
 
-startTh = 0.05
-threshold = 0.05
+    startTh = 0.05
+    threshold = 0.05
 
-xAxis = []
+    xAxis = []
 
-xAxis = np.arange(-3, 3, width)
-skew_max_height = 0
-norm_max_height = 0
-location, scale, shape = (0, 1, 10)
-skew_mode_index = 0
-norm_mode_index = 0
-for i in xAxis:
-    std = 1
-    if norm_max_height < normal_distribution(i, std):
-        norm_max_height = normal_distribution(i, std)
-        norm_mode_index = i
+    xAxis = np.arange(-3, 3, width)
+    skew_max_height = 0
+    norm_max_height = 0
+    location, scale, shape = (0, 1, -10)
+    skew_mode_index = 0
+    norm_mode_index = 0
+    for i in xAxis:
+        std = 1
+        if norm_max_height < normal_distribution(i, std, h, max_velocity):
+            norm_max_height = normal_distribution(i, std, h, max_velocity)
+            norm_mode_index = i
 
-    if skew_max_height < skewGaussian(i, location, scale, shape, std):
-        skew_max_height = skewGaussian(i, location, scale, shape, std)
-        skew_mode_index = i
+        if skew_max_height < skewGaussian(i, location, scale, shape, std, h, max_velocity):
+            skew_max_height = skewGaussian(i, location, scale, shape, std, h, max_velocity)
 
-testArr = []
-norm_std = norm_max_height / max_velocity
-skew_std = skew_max_height / max_velocity
-location = -1 * (skew_mode_index - norm_mode_index)
+    norm_std = norm_max_height / max_velocity
+    skew_std = skew_max_height / max_velocity
 
-x1 = []
-x2 = []
-for i in xAxis:
-    h1 = normal_distribution(i,norm_std)
-    if h1 > threshold:
-        arr.append(normal_distribution(i, norm_std))
-        x1.append(i)
-        ans += normal_distribution(i, norm_std) * width
+    for i in xAxis:
+        std = 1
+        if norm_max_height < normal_distribution(i, std, h, max_velocity):
+            norm_max_height = normal_distribution(i, std, h, max_velocity)
+            norm_mode_index = i
 
-    h2 = skewGaussian(i, location, scale, shape, skew_std)
-    if h2 > threshold:
-        x2.append(i)
-        testArr.append(skewGaussian(i, location, scale, shape, skew_std))
-        ans2 += skewGaussian(i, location, scale, shape, skew_std) * width
+        if skew_max_height < skewGaussian(i, location, scale, shape, std, h, max_velocity):
+            skew_mode_index = i
 
+    testArr = []
+    location = -1 * (skew_mode_index - norm_mode_index)
 
+    x1 = []
+    x2 = []
 
-plt.plot(x1, arr)
-plt.plot(x2, testArr)
-plt.show()
+    first_x1 = -999
+    first_x2 = -999
+    for i in xAxis:
+        h1 = normal_distribution(i,norm_std, h, max_velocity)
+        if h1 > threshold:
+            if first_x1 == -999:
+                first_x1 = i
+            arr.append(normal_distribution(i, norm_std, h, max_velocity))
+            x1.append(push + i - first_x1)
+            ans += normal_distribution(i, norm_std, h, max_velocity) * width
 
-print(ans)
-print(ans2)
+        h2 = skewGaussian(i, location, scale, shape, skew_std, h, max_velocity)
+        if h2 > threshold:
+            if first_x2 == -999:
+                first_x2 = i
+            x2.append(push + i - first_x2)
+            testArr.append(skewGaussian(i, location, scale, shape, skew_std, h, max_velocity))
+            ans2 += skewGaussian(i, location, scale, shape, skew_std, h, max_velocity) * width
+
+    print("ans2", ans2)
+
+    plt.plot(x1, arr)
+    plt.plot(x2, testArr)
+# plt.show()
+#
+# print(ans)
+# print(ans2)

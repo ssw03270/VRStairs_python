@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 import csv
 
-startDeltaLength = 6
+startDeltaLength = 8
 fixedDeltaTime = 0.011111
 #folder = "blendingData/0722-compare/"
 folder = "blendingData/realStair/"
@@ -170,7 +170,7 @@ class RecordedFootData():
         f.close()
 
 class H2F_Data():
-    def __init__(self,folderName,onFilter = True):
+    def __init__(self,folderName,onFilter = False):
         self.fileName = folderName
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
@@ -315,15 +315,18 @@ class H2F_Data():
                     self.validHeads[len(self.validHeads)-1].validEnd = s
                     self.validHeads[len(self.validHeads)-1].make_data()
                 #continue
+            curStep = None
             if(k == 1): #Right
-                self.steps.append(Step(self,self.RFootData,self.RVelData,s,e))
+                curStep = Step(self,self.RFootData,self.RVelData,s,e)
+                self.steps.append(curStep)
                 self.netSteps.append(Step(self,self.RNetPosData,self.RNetVelData,s,e))
             else:#Left
-                self.steps.append(Step(self,self.LFootData, self.LVelData, s, e))
+                curStep = Step(self,self.LFootData, self.LVelData, s, e)
+                self.steps.append(curStep)
                 self.netSteps.append(Step(self,self.LNetPosData, self.LNetVelData, s, e))
             #head
             #hindexes= self.find_head_splitPoint(preE,e,self.HeadData,self.HeadVelData)
-            h = Step(self,self.HeadData,self.HeadVelData,s,e,True)
+            h = Step(self,self.HeadData,self.HeadVelData,s,e,True,curStep)
             preE = e
             if h.verticalDistance > 0.06:
                 self.validHeads.append(h)
@@ -520,12 +523,6 @@ class H2F_Data():
             axes[0].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime,0, 2,colors="g", linestyles="--")
             axes[1].vlines((step.validStart + step.maxVelIndex) * fixedDeltaTime, 0, 2, colors="g", linestyles="--")
 
-        for head in self.validHeads:
-            #axes[1].vlines(head.startVelIndex * fixedDeltaTime,0,2,colors="y",linestyles="--")
-            axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd],color="indigo")
-            axes[0].scatter(head.validEnd * fixedDeltaTime, head.posData[1][head.length-1])
-            axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
-            axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
 
         xAxis = np.array(list(range(0, len(self.RFootData[0]) - startIndex - 1))) * fixedDeltaTime
         axes[1].plot(xAxis,self.HeadVelData[1][startIndex:endIndex], color="r",label="neck velocity")
@@ -533,6 +530,16 @@ class H2F_Data():
         axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "ankle velocity(R)")
         # axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex], color=color,label = "net velocity(L)")
         # axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex] - self.HeadVelData[1][startIndex:endIndex],color=color,label = "net velocity(R)")
+
+        for head in self.validHeads:
+            #axes[1].vlines(head.startVelIndex * fixedDeltaTime,0,2,colors="y",linestyles="--")
+            axes[0].plot(np.array(list(range(head.validStart, head.validEnd)))* fixedDeltaTime,head.originPos[1][head.validStart:head.validEnd],color="indigo")
+            axes[0].scatter(head.validEnd * fixedDeltaTime, head.posData[1][head.length-1])
+            axes[0].vlines((head.validStart+head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+            axes[1].vlines((head.validStart + head.maxVelIndex)* fixedDeltaTime, 0, 2, colors="y", linestyles="--")
+            xAxis = np.array(list(range(head.startVelIndex- startIndex ,head.startVelIndex + startDeltaLength- startIndex))) * fixedDeltaTime
+            axes[0].plot(xAxis, head.originPos[1][head.startVelIndex:head.startVelIndex + startDeltaLength], color="y")
+            axes[1].plot(xAxis,head.originVel[1][head.startVelIndex:head.startVelIndex + startDeltaLength],color="y")
 
         for s in self.steps:
             xAxis = np.array(list(range(s.validStart + s.startDeltaIndex - startIndex, s.validStart + s.startDeltaIndex + startDeltaLength - startIndex))) * fixedDeltaTime
@@ -557,7 +564,7 @@ class H2F_Data():
 
 
 class Step():
-    def __init__(self,origin,originPos,originVel,validStart,validEnd,isHead = False):
+    def __init__(self,origin,originPos,originVel,validStart,validEnd,isHead = False,pairFoot = None):
         self.origin : H2F_Data = origin
         self.originPos = originPos
         self.originVel = originVel
@@ -565,7 +572,7 @@ class Step():
         self.validEnd = validEnd
         self.posData = np.array(originPos)[:,validStart:validEnd]
         self.velData = np.array(originVel)[:,validStart:validEnd]
-        self.isNet = False
+        self.pairFoot : Step = pairFoot
         self.length = 0
         self.maxY = 0
         self.maxVelTime = 0
@@ -606,11 +613,20 @@ class Step():
         self.lastY = self.posData[1][self.length-1]
 
         startIndex = self.validStart
-        if abs(self.velData[1][0]) > 0.05:
-            for i in range(self.validStart,0,-1):
-                if abs(self.originVel[1][i]) < 0.05:
-                    startIndex = i;
-                    break
+        if not self.isHead :
+            if abs(self.velData[1][0]) > 0.1:
+                for i in range(self.validStart,0,-1):
+                    if abs(self.originVel[1][i]) < 0.1:
+                        startIndex = i;
+                        break
+            elif abs(self.velData[1][0]) < 0.05:
+                for i in range(self.validStart,self.validEnd,1):
+                    if abs(self.originVel[1][i]) > 0.075:
+                        startIndex = i;
+                        break
+        else:
+            startIndex = self.pairFoot.startVelIndex
+
 
         self.maxVelTime = (self.validStart + self.maxVelIndex - startIndex) * fixedDeltaTime
         self.startVelIndex = startIndex
@@ -664,10 +680,12 @@ class Step():
                 return True
         if self.isHead:
             if self.length/avgDict["length"] < 0.5 or self.length/avgDict["length"] > 2 or abs(self.length - avgDict["length"]) > 3 * SDDict["length"]:
+                print("length out lier")
                 return True
             if self.verticalDistance / avgDict["verticalDistance"] < 0.3 \
-                    or (self.verticalDistance / avgDict["verticalDistance"])> 1.5 or \
+                    or (self.verticalDistance / avgDict["verticalDistance"])> 2 or \
                     abs(self.verticalDistance - avgDict["verticalDistance"]) > 3 * SDDict["verticalDistance"]:
+                print("verticalDistance out lier")
                 return True
         return False
 
@@ -728,9 +746,9 @@ class StepAnalyzer():
     def DrawLengthPerAscent(self,plt,color):
         for d in self.data:
             if not d.isOutLier and len(d.steps) > 2 and len(d.validHeads) > 1:
-                for i in range(1,2):
-                    # plt[0].scatter(d.validHeads[0].maxYVel,d.steps[1].startDeltaTimeVelocity, color="C0")
-                    # plt[0].scatter(d.validHeads[1].maxYVel, d.steps[2].startDeltaTimeVelocity, color="C1")
+                #for i in range(1,2):
+                plt[0].scatter(d.validHeads[0].maxYVel,d.steps[1].startDeltaTimeVelocity, color="C0",label ="one")
+                plt[0].scatter(d.validHeads[1].maxYVel, d.steps[2].startDeltaTimeVelocity, color="C1",label = "half")
                     # plt[0].scatter(d.validHeads[0].ascentVelocity/d.validHeads[0].verticalDistance ,d.steps[1].ascentVelocity/d.steps[0].verticalDistance,color="C0")
                     # plt[0].scatter(d.validHeads[1].ascentVelocity / d.validHeads[1].verticalDistance,
                     #                d.steps[2].ascentVelocity / d.validHeads[1].verticalDistance, color="C1")
@@ -932,8 +950,6 @@ class StepAnalyzer():
         rList.sort(reverse=True)
         for i in rList:
             del steps[i]
-
-
 
 
 
