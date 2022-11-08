@@ -51,7 +51,7 @@ def reader(folderName):
     print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     Compare2Result(result["stair1_50"][0], result["stair1_75"][0])
 
-    writeCSV(result,condition,"new6")
+    writeCSV(result,condition,"onFilter")
         #plt.show()
 
 def reader1(folderName):
@@ -98,18 +98,51 @@ def lengthCompare(folderName):
     for c in condition:
         file_list = os.listdir(folderName)
         stepFiles = []
+        halfFiles = []
+        halfName = c.replace("_", "_half_")
         for i in range(0,10):
             for name in file_list:
                 stepFiles.append(folderName + name + "/" + c + "/" + str(i)+ "/")
+                halfFiles.append(folderName + name + "/" + halfName + "/" + str(i) + "/")
         print(c)
         sA = g.StepAnalyzer(stepFiles,False,c)
+        sA_half = g.StepAnalyzer(halfFiles,False,halfName)
         result[c] = sA.GetResultList()
-        sA.DrawLengthPerAscent(axes,"C"+str(num))
+        sA.DrawLengthPerAscent(axes,"C"+str(num),num,c)
+        sA_half.DrawLengthPerAscent(axes, "C" + str(num), num, halfName,marker="s")
+        axes[0].legend()
         num += 1
 
+def lengthCompare1(folderName):
+    result = dict()
+    #condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
+    f,axes = plt.subplots(2,1)
+    condition = ["stair1_50","stair1_75","stair1_100"]
+    condition1 = ["stair2_50", "stair2_75","stair2_100"]
+    num = 0
+    stepFiles = []
+    for c in condition:
+        file_list = os.listdir(folderName)
+        for i in range(0,10):
+            for name in file_list:
+                stepFiles.append(folderName + name + "/" + c + "/" + str(i)+ "/")
+    sA = g.StepAnalyzer(stepFiles,False,c)
+    sA.DrawLengthPerAscent1(axes,"C"+str(num),num,c)
+    stepFiles = []
+    for c in condition1:
+        file_list = os.listdir(folderName)
+        for i in range(0,10):
+            for name in file_list:
+                stepFiles.append(folderName + name + "/" + c + "/" + str(i)+ "/")
+    sA = g.StepAnalyzer(stepFiles,False,c)
+    sA.DrawLengthPerAscent1(axes,"C"+str(num),num,c,marker = "*")
+
+    axes[0].legend()
+    num += 1
+
 def analyze(folderName):
-    #condition = ["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair2_60","stair1_85","stair2_85"]
-    condition = ["stair1_50","stair2_50","stair1_75","stair2_75","stair1_100","stair2_100"]
+    condition = ["stair1_50","stair2_50","stair1_75","stair2_75","stair1_100","stair2_100"]#["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair2_60","stair1_85","stair2_85"]
+    #condition = ["stair1_50","stair2_50","stair1_75","stair2_75","stair1_100","stair2_100","stair1_half_50","stair1_half_75","stair1_half_100","stair2_half_50","stair2_half_75","stair2_half_100"]#,"stair2_50","stair1_75","stair2_75","stair1_100","stair2_100"]
     cDatas = dict()
     for c in condition:
         print(c)
@@ -129,27 +162,28 @@ def analyze(folderName):
     # Compare2Result(cDatas["stair1_85"].avgDicts,cDatas["stair2_85"].avgDicts)
     # print("compare(stair1_60,stair2_60)")
     # Compare2Result(cDatas["stair1_60"].avgDicts,cDatas["stair2_60"].avgDicts)
-    comparePair = ["stair1_75","stair1_75"]
+    comparePair = ["stair2_100","stair2_100"]
     # print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     # Compare2Result(cDatas["stair1_60"].avgDicts, cDatas["stair1_85"].avgDicts)
     # print("-----------------------compare(stair2_60, stair2_85)-----------------------------")
     # Compare2Result(cDatas["stair2_60"].avgDicts, cDatas["stair2_85"].avgDicts)
     print(comparePair)
-    Compare2Result(cDatas[comparePair[0]].avgDicts, cDatas[comparePair[1]].avgDicts)
+    #Compare2Result(cDatas[comparePair[0]].avgDicts, cDatas[comparePair[1]].avgDicts)
 
     for i in range(0,10):
-        f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
+        f, axes = plt.subplots(2, 1)
+        axes[0].set_title(comparePair[0])
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
-        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes, color="C1")
-        #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color="C1")
+        #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph_z(axes)
+        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C1")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color= "C0",label=comparePair[0],startIndex= cDatas[comparePair[0]].data[i].steps[0].validStart)
         #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color= "C1",label=comparePair[1],startIndex= cDatas[comparePair[1]].data[i].steps[0].validStart)
 
         #f, axes = plt.subplots(2, 2, sharey=True, sharex=True)
         # cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,0,1," ("+comparePair[0]+")")
         # cDatas[comparePair[1]].data[i].DrawSectionPosAndVelGraph(axes,0, 1, " ("+comparePair[1]+")")
-        # #cDatas[comparePair[2]].data[i].DrawSectionPosAndVelGraph(axes,0, 1, " ("+comparePair[2]+")")
-        # cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,1,2," ("+comparePair[0]+")")
+        #cDatas[comparePair[1]].data[i].DrawSectionPosAndVelGraph(axes,0, 1, " ("+comparePair[1]+")")
+        #cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,1,2," ("+comparePair[0]+")")
         # cDatas[comparePair[1]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[1]+")")
         #cDatas[comparePair[2]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[2]+")")
         plt.show()
@@ -164,13 +198,13 @@ def analyze(folderName):
 #     g.RecordedData(folder + "user3/서승원/stair1_50/" + str(i) + "/", 2).DrawPosAndVelGraph(axes,color="gold")
 #     plt.show()
 
-#lengthCompare(folder+"user3/")
+lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")
-analyze(folder+"user3/")
+#analyze(folder+"user3/")
 #reader(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
-# g.RecordedData(folder+"user3/서민영/stair2_100/0/",2).DrawPosAndVelGraph(axes)
+#g.RecordedData(folder+"user3/서민영/stair2_100/0/",2).DrawPosAndVelGraph(axes)
 #plt.show()
 
 

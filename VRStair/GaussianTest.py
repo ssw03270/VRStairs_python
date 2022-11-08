@@ -21,8 +21,11 @@ def f(z, std):
     output = output * math.pow(math.e, (-1/2) * math.pow(z / std, 2))
     return output
 
-def normal_distribution(x, std, h, max_velocity):
+
+def normal_distribution(x, std, h,max_velocity):
     return 1 / (std * math.sqrt(2*math.pi)) * math.pow(math.e, -math.pow(x/std,2)/2) * h
+
+
 
 def f_cdf(x, std, h, max_velocity):
     out = 0
@@ -116,7 +119,66 @@ def calcGaussian(push, foot_velocity, stair_height):
 
     plt.plot(x1, arr)
     plt.plot(x2, testArr)
-# plt.show()
-#
-# print(ans)
-# print(ans2)
+    plt.show()
+
+
+def FindCurGaussian(h ,curH, max_velocity,startTH):
+    ans = 0
+    sigma = normal_distribution(0, 1, h) / max_velocity
+    Th = max_velocity / 100
+
+    for k in np.arange(-3,0,width):
+        height = normal_distribution(k,sigma,h)
+        if height > Th:
+            ans += height * width
+        if height > startTH:
+            print(ans)
+            break
+    B = ans#(0.5 * h - ans)
+    print("B: ",B ,"curH : ",curH)
+    ans = 0
+    Y = []
+    Y2 = []
+    k = 0
+    addPercent = (h-curH)/(h-B)
+
+    h2 = h * addPercent
+    sigma2 = normal_distribution(0, 1, h2) / max_velocity
+
+    k= -3
+    while(ans < h2):
+        k += width
+        height = normal_distribution(k,sigma2,h2)
+        if(height > startTH):
+            Y.append(height)
+            ans += height * width
+        elif height > Th and k > 0:
+            Y.append(height)
+            ans += height * width
+        elif k > 0:
+            break
+
+
+    ansCheck = 0
+    ans2 = 0
+    k= -3
+    while (ans2 < h):
+        k += width;
+        height = normal_distribution(k, sigma, h);
+        ansCheck += height * width;
+
+        if (ansCheck > curH and height > Th):
+            Y2.append(height)
+            ans2 += height * width
+
+        if (height <= 0 and ans2 > 0):
+            break
+
+    print(ans,ans2,h-B,h -curH)
+    plt.plot([startTH]* 10 + Y)
+    plt.plot([startTH]* 10 +Y2)
+    plt.show()
+
+
+calcGaussian(5,0.8,0.25)
+#FindCurGaussian(0.25,0.03492576,0.9302973,0.6536027)
