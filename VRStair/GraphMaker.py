@@ -7,8 +7,10 @@ import os
 import random
 import math
 import matplotlib.pyplot as plt
+import pandas as pd
 from scipy.signal import savgol_filter
 import csv
+import seaborn as sns
 
 startDeltaLength = 6
 fixedDeltaTime = 0.011111
@@ -176,7 +178,7 @@ class RecordedFootData():
         f.close()
 
 class H2F_Data():
-    def __init__(self,folderName,onFilter = False):
+    def __init__(self,folderName,onFilter = True):
         self.fileName = folderName
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
@@ -497,6 +499,34 @@ class H2F_Data():
         axes[0][i].legend()
         axes[1][i].legend()
 
+    def DrawSimplePosAndVelGraph(self,_axes,color = None, label = None, startIndex = None, endIndex = None):
+        axes = _axes
+        rfoot = self.RFootData
+        lfoot = self.LFootData
+
+        if(startIndex == None):
+            startIndex= 0
+        if(endIndex == None):
+            endIndex = -1
+        startIndex = self.validHeads[0].validStart
+        xAxis = np.array(list(range(0, len(self.RFootData[0])-startIndex-1 ))) * fixedDeltaTime
+
+        axes[0].plot(xAxis,self.HeadData[1][startIndex:endIndex], color="r",alpha =0.2)
+
+        self.HeadVelData = np.array(self.HeadVelData)
+        self.RVelData = np.array(self.RVelData)
+        self.LVelData = np.array(self.LVelData)
+
+        xAxis = np.array(list(range(0, len(self.RFootData[0]) - startIndex - 1))) * fixedDeltaTime
+        axes[1].plot(xAxis,self.HeadVelData[1][startIndex:endIndex], color="r",alpha =0.2)
+
+        for head in self.validHeads:
+            xAxis = np.array(list(range(head.startVelIndex- startIndex ,head.startVelIndex + startDeltaLength- startIndex))) * fixedDeltaTime
+
+
+        axes[0].grid(True)
+        axes[1].grid(True)
+
     def DrawPosAndVelGraph(self,_axes,color = None, label = None, startIndex = None, endIndex = None):
         axes = _axes
         rfoot = self.RFootData
@@ -674,6 +704,7 @@ class Step():
         self.afterCrossVelocity = 1
         self.startDeltaTimeVelocity = 1
         self.startDeltaIndex = 1
+        self.frame = {"time":[],"y":[],"velY":[]}
         self.make_data()
 
     def make_data(self):
@@ -686,6 +717,11 @@ class Step():
         self.maxVelIndex = np.where(self.velData[1] == self.maxYVel)[0][0]
         self.ascentDistance = self.maxY - self.posData[1][0]
         self.ascentTime = self.maxYIndex * fixedDeltaTime
+
+        for i in range(len(self.posData[1])):
+            self.frame["y"].append(self.posData[1][i])
+            self.frame["velY"].append(self.velData[1][i])
+            self.frame["time"].append(i * fixedDeltaTime)
 
         if self.maxYIndex != 0:
             self.ascentVelocity = (self.maxY - self.posData[1][0]) / (self.maxYIndex * fixedDeltaTime)
@@ -822,14 +858,24 @@ class StepAnalyzer():
         self.isDebug = isDebug
         self.avgDicts = []
         self.sdDicts = []
+        self.stepDict = dict()
         self.HeadFootRate = []
-
+        self.dataFrame = pd.DataFrame({"time":[],"y":[],"velY":[]})
         self.make_steps(files)
         #self.GetHeadHeightChange()
         self.AnalyzeHead()
         self.AnalyzeFoot()
         self.AnalyzeNetStep()
 
+
+    def DrawAVGHeadGraph(self,axes):
+        print(self.dataFrame)
+        sns.lineplot(x="time", y="velY",hue="type", data=self.dataFrame, ax=axes[1])
+        sns.lineplot(x="time",y="y",hue="type", data=self.dataFrame,ax=axes[0])
+
+    def DrawAllHeadGraph(self,axes):
+        for d in self.data:
+            d.DrawSimplePosAndVelGraph(axes)
 
     def DrawLengthPerAscent(self,axes,color,num,label=None,marker = None):
         #color1 = color
@@ -957,14 +1003,19 @@ class StepAnalyzer():
         print("-------------Net speed3------------")
         self.AnalyzeStep(netSteps[1],False)
 
+
     def AnalyzeHead(self):
         for data in self.data:
             fh = data.GetFirstHead()
             lh = data.GetLastHead()
             if fh:
                 self.firstHeads.append(fh)
+                fh.frame["type"] = ["Head 1"] * len(fh.frame["time"])
+                self.dataFrame = pd.concat([self.dataFrame,pd.DataFrame(fh.frame)])
             if lh:
                 self.lastHeads.append(lh)
+                lh.frame["type"] = ["Head 2"] * len(lh.frame["time"])
+                self.dataFrame = pd.concat([self.dataFrame, pd.DataFrame(lh.frame)])
 
         print("-------------Head movement1------------")
         if self.isDebug:
@@ -1164,6 +1215,21 @@ class RecordedData():
         self.HeadData = makeVectorData(d[0].split('\n'),False)
         f.close()
 
+    def DrawHeadGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
+        startIndex = self.findStartPoint(self.HeadVelData)
+
+        startHeight = self.HeadData[1][startIndex]
+        xAxis = np.array(list(range(0, len(self.HeadData[1])-startIndex) )) * fixedDeltaTime
+        axes[0].plot(xAxis, np.array(self.HeadData[1][startIndex:endIndex]) -startHeight, color=color,label="head" + additionalLabel)
+
+       # xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) + transX ))) * fixedDeltaTime
+        axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head speed"+ additionalLabel)
+
+        axes[0].grid(True)
+        axes[1].grid(True)
+        axes[0].legend(loc = "upper right")
+        axes[1].legend(loc = "upper right")
+
     def DrawPosAndVelGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
         rfoot = []
         lfoot = []
@@ -1182,11 +1248,12 @@ class RecordedData():
         rfoot = np.array(rfoot)
         lfoot = np.array(lfoot)
 
+
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
         axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
-        axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
-        axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
+        #axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
+        #axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
         # if self.Format == 1:
         #     axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
         #     axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
@@ -1199,8 +1266,8 @@ class RecordedData():
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) + transX ))) * fixedDeltaTime
         axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head speed"+ additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
-        axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed"+ additionalLabel)
-        axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed"+ additionalLabel)
+        #axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed"+ additionalLabel)
+        #axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed"+ additionalLabel)
         # if self.Format == 1:
         #     axes[1].plot(xAxis,self.RFootData.realVelData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
         #     axes[1].plot(xAxis,self.LFootData.realVelData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
@@ -1213,6 +1280,10 @@ class RecordedData():
         axes[1].legend(loc = "upper right")
         return
 
+    def findStartPoint(self,Veldata):
+        for i in range(len(Veldata)):
+            if Veldata[i] > 0.05 and Veldata[i] < 1:
+                return i
 
     def DrawGrahp(self,x = "Time",color = None, label = None):
         rfoot = []

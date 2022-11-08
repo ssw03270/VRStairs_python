@@ -6,7 +6,7 @@ import csv
 import numpy as np
 
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
-folder = "C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 #folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
 #folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
 #data =  g.RecordedData(folder)
@@ -170,12 +170,13 @@ def analyze(folderName):
     print(comparePair)
     #Compare2Result(cDatas[comparePair[0]].avgDicts, cDatas[comparePair[1]].avgDicts)
 
-    for i in range(0,10):
-        f, axes = plt.subplots(2, 1)
-        axes[0].set_title(comparePair[0])
-        #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
+    f, axes = plt.subplots(2, 1)
+    cDatas[comparePair[0]].DrawAllHeadGraph(axes)
+    # for i in range(0,50):
+    #     axes[0].set_title(comparePair[0])
+    #     cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph_z(axes)
-        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C1")
+        #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C1")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color= "C0",label=comparePair[0],startIndex= cDatas[comparePair[0]].data[i].steps[0].validStart)
         #cDatas[comparePair[1]].data[i].DrawPosAndVelGraph(axes,color= "C1",label=comparePair[1],startIndex= cDatas[comparePair[1]].data[i].steps[0].validStart)
 
@@ -186,7 +187,7 @@ def analyze(folderName):
         #cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,1,2," ("+comparePair[0]+")")
         # cDatas[comparePair[1]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[1]+")")
         #cDatas[comparePair[2]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[2]+")")
-        plt.show()
+    plt.show()
     #for i in range(0, 10):
     #    cDatas["stair2_30"].data[i].DrawPosAndVelGraph(axes)
 
@@ -198,9 +199,9 @@ def analyze(folderName):
 #     g.RecordedData(folder + "user3/서승원/stair1_50/" + str(i) + "/", 2).DrawPosAndVelGraph(axes,color="gold")
 #     plt.show()
 
-lengthCompare1(folder+"user3/")
+#lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")
-#analyze(folder+"user3/")
+analyze(folder+"user3/")
 #reader(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
