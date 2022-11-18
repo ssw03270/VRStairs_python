@@ -4,60 +4,52 @@ import matplotlib.pyplot as plt
 import os
 import csv
 import numpy as np
+import pandas as pd
+import seaborn as sns
 
-def analyze(folderName,axes):
-    condition = ["stair1_50","stair2_50","stair1_75","stair2_75","stair1_100","stair2_100"]#["stair1_60","stair1_85","stair1_100","stair2_30","stair2_60","stair2_85","stair2_100"]#["stair1_60","stair2_60","stair1_85","stair2_85"]
-    #condition = ["stair1_50","stair2_50","stair1_75","stair2_75","stair1_100","stair2_100","stair1_half_50","stair1_half_75","stair1_half_100","stair2_half_50","stair2_half_75","stair2_half_100"]#,"stair2_50","stair1_75","stair2_75","stair1_100","stair2_100"]
-    cDatas = dict()
-    for c in condition:
-        print(c)
-        file_list = os.listdir(folderName)
-        stepFiles = []
-        for i in range(0,10):
-            stepFiles.append(folderName + "서민영" + "/" + c + "/" + str(i)+ "/")
-            stepFiles.append(folderName + "이철우" + "/" + c + "/" + str(i) + "/")
-            stepFiles.append(folderName + "박주현" + "/" + c + "/" + str(i) + "/")
-            stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i) + "/")
-            stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
-        cDatas[c] = g.StepAnalyzer(stepFiles,False)
 
-    comparePair = ["stair2_50","stair2_100"]
-    #print(comparePair)
 
-    #f, axes = plt.subplots(2, 1)
-    cDatas[comparePair[0]].DrawAllHeadGraph(axes)
-    #cDatas[comparePair[0]].DrawAVGHeadGraph(axes)
-    #cDatas[comparePair[0]].DrawAllHeadGraph(axes)
-    #cDatas[]
+ProjectFolder = os.getcwd()  #"C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+ProjectFolder = ProjectFolder.replace("\\","/",10)
+UnityFolder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+folder = UnityFolder
 
-folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 Rvelocity =  g.loadData(folder+"Rvelocity.txt")
 Lvelocity =  g.loadData(folder+"Lvelocity.txt")
 
 start = 5
 f, axes = plt.subplots(2, 1)
-analyze(folder,axes)
+#analyze(folder,axes)
 
-#virtual = g.RecordedData(folder+"for_test/test/",1).DrawPosAndVelGraph(axes, color="C1")
-#virtual = g.RecordedData(folder+"for_test/test/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(me)")
-#virtual = g.RecordedData(folder+"for_test/10-26/24/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(me)")
-# virtual = g.RecordedData(folder+"recodingTest/test3/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(1)")
-# virtual = g.RecordedData(folder+"recodingTest/test7/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(2)")
-#virtual = g.RecordedData(folder+"recodingTest/test4/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(3)")
-virtual = g.RecordedData(folder+"recodingTest/test8/",1).DrawHeadGraph(axes,startIndex=start,additionalLabel="(boundary gaussian)")
-virtual = g.RecordedData(folder+"recodingTest/late/",1).DrawHeadGraph(axes,startIndex=start,additionalLabel="(late boundary gaussian)")
 
-#virtual = g.RecordedData(folder+"for_test/stair1_75/1/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(real Time record)")
-#virtual = g.RecordedData(folder+"recodingTest/test6/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(6)")
-#g.RecordedData(folder+"for_test/waist50/2/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel=" (waist based)",addtionalHeight=0.3,transX=-0) #50
-#g.RecordedData(folder+"for_test/waist100/2/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel=" (waist based)",addtionalHeight=0.3,transX=-220) # 100
-#g.RecordedData(folder+"for_test/10-21/3/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel=" (waist based)",addtionalHeight=0.3,transX=-80) #75
+def ReadDataFrame(condition,type):
+    df = pd.read_csv(ProjectFolder + "/dataFrame/" + condition+"/"+type+ ".csv")
+    sns.lineplot(x="time", y="velY", data=df,ax=axes[1],label = condition)
+
+d1 = g.DrawAVGHeadGraph(axes,"stair2_75")
+# for i in range(0,10):
+#     g.ReadAndDrawGraph(folder+"user3/황주영/stair2_75/"+str(i)+"/LfootRotationData.txt",folder+"user3/황주영/stair2_75/"+str(i)+"/RfootRotationData.txt")
+#     g.ReadAndDrawGraph(folder + "user3/서승원/stair2_75/" + str(i) + "/LfootRotationData.txt",
+#                     folder + "user3/서승원/stair2_75/" + str(i) + "/RfootRotationData.txt",rcolor="gray",lcolor="C2")
+    #plt.show()
+#virtual = g.RecordedData(folder+"recodingTest/vrstair/stair2_50/",1).DrawHeadGraph(axes,startIndex=start,avgInfo=d1,additionalLabel="(vrstair)")
+# virtual = g.RecordedData(folder + "recodingTest/our/stair2_100/1/", 1).DrawHeadGraph(axes, startIndex=start,
+#                                                                                                  avgInfo=d1,
+#                                                                                                  additionalLabel="(boundary gaussian)")
+# for i in range(4):
+#     virtual = g.RecordedData(folder+"recodingTest/our/stair1_50/"+str(i)+"/",1).DrawHeadGraph(axes,startIndex=start,avgInfo=d1,additionalLabel="(boundary gaussian)")
+
+
+
+
+#virtual = g.RecordedData(folder+"recodingTest/AscendingDescending/stair1_50/3/",1).DrawHeadGraph(axes,startIndex=start,additionalLabel="(ascending and descending)")
+#virtual = g.RecordedData(folder+"recodingTest/test8/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(boundary gaussian)")
+#virtual = g.RecordedData(folder+"recodingTest/late/",1).DrawHeadGraph(axes,startIndex=start,additionalLabel="(late boundary gaussian)")
 #real = g.RecordedData(folder+"user3/임수빈/stair1_100/1/",2).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel=" (real stair)",addtionalHeight=0.27,transX=16)
 #real = g.RecordedData(folder+"user3/서승원/stair2_75/4/",2).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel=" (real stair)",addtionalHeight=-0.5,transX=20)
 #real = g.RecordedData(folder+"real/4/",2).DrawHeadGraph(axes,startIndex=start,additionalLabel=" (real stair)",addtionalHeight=-0.4,transX=0)
 plt.show()
-#real = g.RecordedData(folder+"user3/이철우/stair2_50/4/",2).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel=" (real stair)",addtionalHeight=-0.4,transX=0)
-#axes[1].axhline(0.5,0,1,linestyle='--')
+
 axes[0].set_title("position")
 axes[1].set_title("vertical velocity")
 
@@ -71,14 +63,12 @@ plt.ylim(-2,4)
 axes[0].set_ylabel('height(m)')
 axes[1].set_xlabel('time(s)')
 axes[1].set_ylabel('velocity(m/s)')
-#real = g.RecordedData(folder+"real/3/",2).DrawPosAndVelGraph(axes,startIndex=30, color="C1",additionalLabel=" (real)")
-#my = g.RecordedData(folder+"my/1/",2).DrawPosAndVelGraph(axes,startIndex=30, color="r", additionalLabel= " (my)")
-#my = g.RecordedData(folder+"my/3/",2).DrawPosAndVelGraph(axes,startIndex=30, color="r", additionalLabel= " (my)")
-#my = g.RecordedData(folder+"my/4/",2).DrawPosAndVelGraph(axes,startIndex=start, color="r", additionalLabel= " (my)")
+
+
+
 # xAxis = np.array(list(range(start, len(Rvelocity[1])))) * g.fixedDeltaTime
 # axes[1].plot(xAxis,Rvelocity[1][start:],color="pink")
 # axes[1].plot(xAxis,Lvelocity[1][start:],color="pink")
-plt.show()
 #virtual = g.RecordedData(folder+"recodingTest/sp4/",1).DrawPosAndVelGraph(axes)
 #folder2 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
 #real = g.RecordedData(folder2,2)

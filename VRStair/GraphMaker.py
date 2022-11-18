@@ -22,6 +22,9 @@ lFootName = "LeftFootController_"
 realName = "realTrajectory"
 blendName = "blendedTrajectory"
 filterSize = 51
+defalutDF  =  pd.DataFrame({"index":[],"time":[],"y":[],"velY":[]})
+
+
 
 class Vector3:
     def __init__(self, x, y, z):
@@ -53,7 +56,19 @@ class Vector3:
     def GetLength(self):
         return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
 
+    def ToString(self):
+        return "("+str(self.x)+", "+str(self.y)+", "+str(self.z)+")"
 
+RfootOffset = Vector3(0.08,0.1,0)
+LfootOffset = Vector3(-0.08,0.1,0)
+HeadOffset = Vector3(0,1.6,0)
+defalutRotationL = Vector3(22,-44,-40) * math.pi/180
+defalutRotationR = Vector3(10.7,53,140.7)* math.pi/180
+
+def writeData(path,content):
+    file = open(path, "w")
+    file.write(content)
+    file.close()
 
 def loadPosData(flieName):
     f = open(flieName, 'r')
@@ -88,7 +103,7 @@ def loadPosData(flieName):
     data.append(pZ);
     return data
 
-def loadData(flieName,firstZero = False):
+def loadData(flieName,firstZero = False,addedVector = Vector3(0,0,0)):
     f = open(flieName, 'r')
     line = f.readline()
     pX = []
@@ -107,9 +122,9 @@ def loadData(flieName,firstZero = False):
         if not line: break
         line = line.replace("(", "").replace(")", "").replace(",", "")
         line = line.split()
-        pX.append(float(line[0]) - firstX)
-        pY.append(float(line[1]) - firstY)
-        pZ.append(float(line[2]) - firstZ)
+        pX.append(float(line[0]) - firstX + addedVector.x)
+        pY.append(float(line[1]) - firstY + addedVector.y)
+        pZ.append(float(line[2]) - firstZ + addedVector.z)
     f.close()
     data = []
     data.append(pX);
@@ -173,16 +188,18 @@ class RecordedFootData():
             self.trackerHeightData.append(float(t))
         for i in range(1,len(self.realPosData[0])):
             for j in range(0,3):
-                    self.realVelData[j].append((self.realPosData[j][i] - self.realPosData[j][i-1]) / 0.0111111)
+                    self.realVelData[j].append((self.realPosData[j][i] - self.realPosData[j][i-1]) / fixedDeltaTime)
         self.realVelData[1] = savgol_filter(self.realVelData[1], filterSize, 6)
         f.close()
 
 class H2F_Data():
-    def __init__(self,folderName,onFilter = True):
+    def __init__(self,folderName,onFilter = False):
         self.fileName = folderName
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
         self.HeadData = loadData(folderName + "WaistData.txt",True)
+        self.RRotData = np.array(loadData(folderName + "RfootRotationData.txt",True,defalutRotationR))
+        self.LRotData = np.array(loadData(folderName + "LfootRotationData.txt",True,defalutRotationL))
         self.RVelData = [[0],[0],[0]]
         self.LVelData = [[0],[0],[0]]
         self.HeadVelData = [[0], [0], [0]]
@@ -205,6 +222,10 @@ class H2F_Data():
         self.afterFirstStepHeadHeight = 0
         self.isOutLier = False
         self.myVelTest = True
+
+        self.headTrajectoryDataFrame = pd.DataFrame()
+        self.allTrajectoryDataFrame = pd.DataFrame()
+        self.trajectoryLength = 0
 
         if onFilter:
             self.OnFiltering()
@@ -301,6 +322,7 @@ class H2F_Data():
             return;
         #1 오른발 걸음 분리
         validIndex = self.find_splitPoint(self.RFootData, self.RVelData, self.RSpeedData)
+
         for i in range(len(validIndex[0])):
             si = validIndex[0][i]
             ei = validIndex[1][i]
@@ -313,6 +335,12 @@ class H2F_Data():
             self.stepIndexes.append((si, ei, 0))
         # 순서에 맞게 정렬
         self.stepIndexes = sorted(self.stepIndexes)
+
+        #이상한 데이터
+        if(len(self.stepIndexes) == 0):
+            self.isOutLier = True
+            return
+
         preE = 0
         for s,e,k in self.stepIndexes:
             if preE > s +5:
@@ -339,11 +367,53 @@ class H2F_Data():
             if h.verticalDistance > 0.06:
                 self.validHeads.append(h)
                 self.validHeadIndexes.append((s,e))
+        if (len(self.validHeadIndexes) == 0):
+            self.isOutLier = True
+            return
+        start = max( self.validHeadIndexes[0][0] - 10,0)
 
-        # for s in self.steps:
-        #     s.DrawStartToMax()
-        # for s in self.validHeads:
-        #     s.DrawStartToMax()
+        dic = {"time" : np.array(list(range(0, len(self.HeadData[1]) - start))) * fixedDeltaTime,
+               "index" : np.array(list(range(0, len(self.HeadData[1]) - start))),
+               "y" : self.HeadData[1][start:],
+               "velY" : self.HeadVelData[1][start:]}
+
+
+        self.headTrajectoryDataFrame = pd.DataFrame(dic)
+        start = self.stepIndexes[0][0]
+        #print(start,len(np.array(list(range(0, len(self.RFootData[0]) - start)))),len(np.array(self.RFootData[1][start:])) )
+
+        rFoot = self.RFootData
+        lFoot = self.LFootData
+        rRot = self.RRotData
+        lRot = self.LRotData
+
+        if self.stepIndexes[0][2] != 1:
+            rFoot = self.LFootData
+            lFoot = self.RFootData
+            rRot = self.LRotData
+            lRot = self.RRotData
+
+
+        Td = {"index" : np.array(list(range(0, len(self.HeadData[0]) - start))),
+              "Hx" : np.array(self.HeadData[0][start:]),
+              "Hy" : np.array(self.HeadData[1][start:]),
+              "Hz" :np.array(self.HeadData[2][start:]),
+              "Rx" :  np.array(rFoot[0][start:]),
+              "Ry" :  np.array(rFoot[1][start:]),
+              "Rz" :  np.array(rFoot[2][start:]),
+              "Lx" :  np.array(lFoot[0][start:]),
+              "Ly" :  np.array(lFoot[1][start:]),
+              "Lz" :  np.array(lFoot[2][start:]),
+              "RRx": np.array(rRot[0][start:]),
+              "RRy": np.array(rRot[1][start:]),
+              "RRz": np.array(rRot[2][start:]),
+              "LRx": np.array(lRot[0][start:]),
+              "LRy": np.array(lRot[1][start:]),
+              "LRz": np.array(lRot[2][start:])
+        }
+        self.allTrajectoryDataFrame = pd.DataFrame(Td)
+        self.trajectoryLength = len(self.RFootData[0]) - start
+
 
     def find_head_splitPoint(self,startIndex,endIndex,posData,velData):
         windowSize = 6
@@ -860,13 +930,62 @@ class StepAnalyzer():
         self.sdDicts = []
         self.stepDict = dict()
         self.HeadFootRate = []
-        self.dataFrame = pd.DataFrame({"time":[],"y":[],"velY":[]})
+        self.dataFrameDict = dict()
+        self.dataFrame = pd.DataFrame({"time":[],"index":[],"y":[],"velY":[]})
         self.make_steps(files)
         #self.GetHeadHeightChange()
         self.AnalyzeHead()
         self.AnalyzeFoot()
         self.AnalyzeNetStep()
 
+    def MakeHeadFullTrajectoryData(self):
+        df = pd.DataFrame()
+        for d in self.data:
+            df = pd.concat([df,d.headTrajectoryDataFrame])
+        return df
+
+    def MakeAllTrajectoryToCSV(self,path):
+        df = pd.DataFrame()
+        meanLength = 0
+        for d in self.data:
+            df = pd.concat([df, d.allTrajectoryDataFrame])
+            meanLength += (d.trajectoryLength) /len(self.data)
+
+        meanLength = int(meanLength)
+        meanData = {"Hx":[],"Hy":[],"Hz":[],"Rx":[],"Ry":[],"Rz":[],"Lx":[],"Ly":[],"Lz":[],"RRx":[],"RRy":[],"RRz":[],"LRx":[],"LRy":[],"LRz":[]}
+
+        for i in range(meanLength):
+            for k in meanData.keys():
+                if(len(df.loc[df['index'] == i][k]) == 0):
+                   break
+                else:
+                    m = df.loc[df['index'] == i][k].mean()
+                meanData[k].append(m)
+
+        resultDF = pd.DataFrame(meanData)
+
+        HeadTxt = ""
+        RFootTxt = ""
+        LFootTxt = ""
+        rRotationTxt = ""
+        lRotationTxt = ""
+        timeDataTxt = ""
+        for i in range(len(meanData["Hx"])-10):
+            HeadTxt += (HeadOffset + Vector3(meanData["Hx"][i],meanData["Hy"][i],meanData["Hz"][i])).ToString() + "\n"
+            RFootTxt += (RfootOffset + Vector3(meanData["Rx"][i],meanData["Ry"][i],meanData["Rz"][i])).ToString() + "\n"
+            LFootTxt += (LfootOffset + Vector3(meanData["Lx"][i],meanData["Ly"][i],meanData["Lz"][i])).ToString() + "\n"
+            rRotationTxt +=  Vector3(meanData["RRx"][i],meanData["RRy"][i],meanData["RRz"][i]).ToString() + "\n"
+            lRotationTxt += Vector3(meanData["LRx"][i], meanData["LRy"][i], meanData["LRz"][i]).ToString() + "\n"
+            timeDataTxt += str(fixedDeltaTime) + "\n"
+
+        os.makedirs(path, exist_ok=True)
+        resultDF.to_csv(path + "trajectory.csv")
+        writeData(path+"WaistData.txt",HeadTxt)
+        writeData(path + "Rfootdata.txt", RFootTxt)
+        writeData(path + "Lfootdata.txt", LFootTxt)
+        writeData(path + "RfootRotationData.txt", rRotationTxt)
+        writeData(path + "LfootRotationData.txt", lRotationTxt)
+        writeData(path+"TimeData.txt",timeDataTxt)
 
     def DrawAVGHeadGraph(self,axes):
         print(self.dataFrame)
@@ -968,20 +1087,32 @@ class StepAnalyzer():
         return
 
     def AnalyzeFoot(self):
-        curSteps = [[],[],[],[]]
+        curSteps = [[],[],[]]
+        df = [defalutDF.copy()] * 3
+
         for data in self.data:
             if len(data.steps) > 2:
-                for i in range(len(data.steps)):
+                for i in range(0,3):
                     s = data.steps[i]
                     if s:
                         curSteps[i].append(s)
+
+
         for i in range(len(data.steps)):
             print("-------------Foot" + str(i) + "------------")
             if self.isDebug:
                 for s in curSteps[i]:
                     s.Draw()
                 plt.show()
-            self.AnalyzeStep(curSteps[i])
+            self.AnalyzeStep(curSteps[i]) # 아웃라이어 제거 및 평균, 표준편차 구하기
+
+        for i in range(len(curSteps)):
+            for s in curSteps[i]:
+                df[i] = pd.concat([df[i], pd.DataFrame(s.frame)])
+
+        self.dataFrameDict["First Foot"] = df[0]
+        self.dataFrameDict["Second Foot"] = df[1]
+        self.dataFrameDict["Last Foot"] = df[2]
 
     def AnalyzeNetStep(self):
         netSteps =[[],[]]
@@ -1005,17 +1136,22 @@ class StepAnalyzer():
 
 
     def AnalyzeHead(self):
+        df1  = pd.DataFrame(pd.DataFrame({"time":[],"y":[],"velY":[]}))
+        df2 = pd.DataFrame(pd.DataFrame({"time":[],"y":[],"velY":[]}))
         for data in self.data:
             fh = data.GetFirstHead()
             lh = data.GetLastHead()
             if fh:
                 self.firstHeads.append(fh)
                 fh.frame["type"] = ["Head 1"] * len(fh.frame["time"])
-                self.dataFrame = pd.concat([self.dataFrame,pd.DataFrame(fh.frame)])
+                df1 = pd.concat([df1,pd.DataFrame(fh.frame)])
             if lh:
                 self.lastHeads.append(lh)
                 lh.frame["type"] = ["Head 2"] * len(lh.frame["time"])
-                self.dataFrame = pd.concat([self.dataFrame, pd.DataFrame(lh.frame)])
+                df2 = pd.concat([df2, pd.DataFrame(lh.frame)])
+
+        self.dataFrameDict["Head 1"] = df1
+        self.dataFrameDict["Head 2"] = df2
 
         print("-------------Head movement1------------")
         if self.isDebug:
@@ -1077,7 +1213,7 @@ class StepAnalyzer():
         return infoDict
 
 
-    def AnalyzeStep(self,steps,removeOutLier = False):
+    def AnalyzeStep(self,steps,removeOutLier = True):
         infoDict = self.GetAvgInfo(steps)
         SDDict = self.GetSDInfo(infoDict, steps)
         print("Before remove OutLier:" ,infoDict)
@@ -1137,13 +1273,15 @@ class RecordedData():
         self.RFootData = RecordedFootData(folderName + "RightFootController.txt")
         self.LFootData = RecordedFootData(folderName + "LeftFootController.txt")
         self.HeadData = [[]]
+        self.testData = [[]]
+        self.testVelData = [0]
         self.LoadHeadData(folderName + "otherData.txt")
 
         rfoot = []
         lfoot = []
         for i in range(3):
-            # rfoot.append(savgol_filter(self.RFootData.blendPosData[i], filterSize, 6))
-            # lfoot.append(savgol_filter(self.LFootData.blendPosData[i], filterSize, 6))
+            #rfoot.append(savgol_filter(self.RFootData.blendPosData[i], filterSize, 6))
+            #lfoot.append(savgol_filter(self.LFootData.blendPosData[i], filterSize, 6))
             rfoot.append(self.RFootData.blendPosData[i])
             lfoot.append(self.LFootData.blendPosData[i])
 
@@ -1155,9 +1293,10 @@ class RecordedData():
 
         for i in range(1,len(rfoot[0])):
             for j in range(0,3):
-                self.RVelData[j].append((rfoot[j][i] - rfoot[j][i-1]) / 0.0111111)
-                self.LVelData[j].append((lfoot[j][i] - lfoot[j][i - 1]) / 0.011111)
-            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
+                self.RVelData[j].append((rfoot[j][i] - rfoot[j][i-1]) / fixedDeltaTime)
+                self.LVelData[j].append((lfoot[j][i] - lfoot[j][i - 1]) / fixedDeltaTime)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / fixedDeltaTime)
+            self.testVelData.append((self.testData[1][i] - self.testData[1][i - 1]) / fixedDeltaTime)
 
     def init_2(self,folderName):
         self.RFootData = loadData(folderName + "Rfootdata.txt",True)
@@ -1167,16 +1306,16 @@ class RecordedData():
 
         self.RFootData[1] = savgol_filter(self.RFootData[1], filterSize, 6)
         self.LFootData[1] = savgol_filter(self.LFootData[1], filterSize, 6)
-        #self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
         self.RVelData = [[0],[0],[0]]
         self.LVelData = [[0],[0],[0]]
         self.HeadVelData = [0]
 
         for i in range(1,len(self.RFootData[1])):
             for j in range(0,3):
-                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i-1]) / 0.0111111)
-                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / 0.011111)
-            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
+                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i-1]) / fixedDeltaTime)
+                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / fixedDeltaTime)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / fixedDeltaTime)
         self.HighestPoint = []
         self.ChangePoint = []
 
@@ -1198,10 +1337,10 @@ class RecordedData():
 
         for i in range(1,len(self.RFootData[1])):
             for j in range(0,3):
-                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i-1]) / 0.0111111)
-                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / 0.011111)
-                self.ankleVelData.append((self.ankleData[1][i] - self.ankleData[1][i - 1]) / 0.011111)
-            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / 0.011111)
+                self.RVelData[j].append((self.RFootData[j][i] - self.RFootData[j][i-1]) / fixedDeltaTime)
+                self.LVelData[j].append((self.LFootData[j][i] - self.LFootData[j][i - 1]) / fixedDeltaTime)
+                self.ankleVelData.append((self.ankleData[1][i] - self.ankleData[1][i - 1]) / fixedDeltaTime)
+            self.HeadVelData.append((self.HeadData[1][i] - self.HeadData[1][i - 1]) / fixedDeltaTime)
 
         self.HighestPoint = []
         self.ChangePoint = []
@@ -1210,20 +1349,34 @@ class RecordedData():
         f = open(fileName, 'r')
         data = f.read()
         dataList = data.split("other\n")
-
         d = dataList[2].split("####\n")
         self.HeadData = makeVectorData(d[0].split('\n'),False)
+        d1 = dataList[1].split('####\n')
+        self.testData = makeVectorData(d1[0].split("\n"),False)
         f.close()
 
-    def DrawHeadGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
-        startIndex = self.findStartPoint(self.HeadVelData)
+    def DrawHeadGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,avgInfo = None,addtionalHeight = 0,transX = 0):
+        startIndex = max(self.findStartPoint(self.HeadVelData) -10 ,0)
 
         startHeight = self.HeadData[1][startIndex]
-        xAxis = np.array(list(range(0, len(self.HeadData[1])-startIndex) )) * fixedDeltaTime
-        axes[0].plot(xAxis, np.array(self.HeadData[1][startIndex:endIndex]) -startHeight, color=color,label="head" + additionalLabel)
 
-       # xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) + transX ))) * fixedDeltaTime
-        axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head speed"+ additionalLabel)
+        xAxis = np.array(list(range(0, len(self.HeadData[1])-startIndex) )) * fixedDeltaTime
+
+        meanData = []
+
+        for i in list(range(0, len(self.HeadData[1])-startIndex) ):
+            if(len(avgInfo.loc[avgInfo['index'] == i]["velY"]) == 0):
+                m = 0
+            else:
+                m = avgInfo.loc[avgInfo['index'] == i]["velY"].mean()
+            meanData.append(m)
+        #print(len(meanData),meanData)
+        #axes[0].plot(xAxis,np.array(self.testData[1][startIndex:endIndex]))
+        axes[0].plot(xAxis, np.array(self.HeadData[1][startIndex:endIndex]) -startHeight, color=color,label="head" + additionalLabel)
+        axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex] - np.array(self.testVelData[startIndex:endIndex]),label="head speed"+ additionalLabel)
+        axes[1].plot(xAxis,np.array(meanData),label = "test")
+        print(dtw(meanData,self.HeadVelData[startIndex:endIndex]))
+        #axes[1].plot(xAxis, np.array(self.testVelData[startIndex:endIndex]))
 
         axes[0].grid(True)
         axes[1].grid(True)
@@ -1252,11 +1405,16 @@ class RecordedData():
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
         axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
-        #axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
-        #axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
-        # if self.Format == 1:
-        #     axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
-        #     axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
+        axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
+        axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
+
+        if self.Format == 1:
+            #axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
+            #axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
+            axes[0].plot(xAxis, rfoot[1][startIndex:endIndex] - self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
+                         label="Lfoot(add)" + additionalLabel)
+            axes[0].plot(xAxis, lfoot[1][startIndex:endIndex] - self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
+                         label="Rfoot(add)" + additionalLabel)
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
@@ -1266,8 +1424,8 @@ class RecordedData():
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) + transX ))) * fixedDeltaTime
         axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head speed"+ additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
-        #axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed"+ additionalLabel)
-        #axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed"+ additionalLabel)
+        axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed"+ additionalLabel)
+        axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed"+ additionalLabel)
         # if self.Format == 1:
         #     axes[1].plot(xAxis,self.RFootData.realVelData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
         #     axes[1].plot(xAxis,self.LFootData.realVelData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
@@ -1281,9 +1439,16 @@ class RecordedData():
         return
 
     def findStartPoint(self,Veldata):
-        for i in range(len(Veldata)):
-            if Veldata[i] > 0.05 and Veldata[i] < 1:
+
+        for i in range(10,len(Veldata)):
+            check = True
+            for j in range(i,i+10):
+                if Veldata[j] < 0.1 or Veldata[j] > 1:
+                    check = False
+                    break
+            if check:
                 return i
+
 
     def DrawGrahp(self,x = "Time",color = None, label = None):
         rfoot = []
@@ -1470,7 +1635,7 @@ class TrackingData():
         self.validStartIndex = 0
         self.validEndIndex = 0
         self.validTh = 0.4
-        self.fixedDeltaTime = 0.01111
+        self.fixedDeltaTime = fixedDeltaTime
         self.length = 0
         self.validMovement = 0
         self.loadData()
@@ -1559,15 +1724,27 @@ class TrackingData():
         graph.plot(self.speed[startIndex:endIndex],color = color,label = label)
 
 
-
-def ReadAndDrawGraph(pathR,pathL):
+def DrawGraph(path):
     data = []
     #for path in pathArray:
-    data.append(loadPosData(pathL).copy())
-    data.append(loadPosData(pathR).copy())
-    #for i in range(int(len(data)/2)):
+    data.append(loadPosData(path).copy())
     plt.plot(data[0][1],label = "L")
-    plt.plot(data[1][1], label = "R")
+
+
+def ReadAndDrawGraph(pathR,pathL,rcolor="r",lcolor="b"):
+    data = []
+    #for path in pathArray:
+    if(not os.path.isfile(pathR)):
+        print("not exist: "+pathR)
+        return
+    data.append(loadData(pathL,True).copy())
+    data.append(loadData(pathR,True).copy())
+    #for i in range(int(len(data)/2)):
+    plt.plot(data[0][1],label = "L",color=rcolor)
+    plt.plot(data[1][1], label = "R",color=lcolor)
+    #plt.plot(data[0][0],label = "L",color=rcolor)
+    #plt.plot(data[1][0], label = "R",color=lcolor)
+
     plt.legend(loc='upper right')
 
 
@@ -1726,7 +1903,7 @@ def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", labe
             #WaistData.DrawPosGraph(g, RFootData.validStartIndex, WaistData.maxYIndex, color=color1, label=label)
 
             #HeadData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
-            deltaTime = 0.011111
+            deltaTime = fixedDeltaTime
             print((RFootData.validEndIndex, RFootData.validStartIndex))
             avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime
             avgMaxFootHeight += max(RFootData.posData[1])
@@ -1791,3 +1968,30 @@ def DrawTrackingDataSet2(folderName):
         #print(RFootData.GetAscentVelocity(),WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
 
 
+def GetHeadDataFrame(condition):
+    f  = os.getcwd().replace("\\","/",10)
+    df = pd.read_csv(f + "/dataFrame/" + condition +"/" + "HeadFull.csv")
+    return df
+
+
+def DrawAVGHeadGraph(axes,condition):
+    d1 : pd.DataFrame = GetHeadDataFrame(condition)
+    #sns.lineplot(x="time", y="velY", data=d1,ax=axes[1],label = condition+"(avg)")
+    sns.lineplot(x="time", y="y", data=d1,ax=axes[0],label = condition+"(avg)")
+    return d1
+
+
+def dtw(s,t):
+    n,m = len(s),len(t)
+    dtw_matrix = np.zeros((n+1,m+1))
+    for i in range(n+1):
+        for j in range(m+1):
+            dtw_matrix[i,j] = np.inf
+    dtw_matrix[0,0] = 0
+
+    for i in range(1,n+1):
+        for j in range(1,m+1):
+            cost = abs(s[i-1]-t[j-1])
+            last_min = np.min([dtw_matrix[i-1,j],dtw_matrix[i,j-1],dtw_matrix[i-1,j-1]])
+            dtw_matrix[i,j] = cost + last_min
+    return dtw_matrix[n,m]

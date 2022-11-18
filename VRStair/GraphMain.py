@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 import os
 import csv
 import numpy as np
-
+import pandas as pd
+import seaborn as sns
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
-folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+#folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 #folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
-#folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
+folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
 #data =  g.RecordedData(folder)
 
 
@@ -21,9 +22,10 @@ def writeCSV(resultDict,condition,name = "avg"):
         w = csv.writer(f)
         order = g.StepAnalyzer.order#["Head 1","Head 2", "First Foot", "Second Foot", "Last Foot"]
         for c in condition:
-            curInfo = resultDict[c]
+            curInfo = resultDict[c].GetResultList()
+            print(resultDict[c].GetResultList())
             #w.writerow([c])
-            w.writerow([c, ""] + list(resultDict[condition[0]][0][0].keys()))
+            w.writerow([c, ""] + list(resultDict[condition[0]].GetResultList()[0][0].keys()))
             i = 0
             for o in order:
                 w.writerow([o])
@@ -34,25 +36,59 @@ def writeCSV(resultDict,condition,name = "avg"):
                 i += 1
         print(name+".csv" +" is saved at")
 
-# condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
-def reader(folderName):
+'''
+input
+ - folderName : 경로(str)
+ - condition : 계단 속도 및 크기 분류 [str,str,...,] ex)   ["stair2_75", "stair2_100"]
+output
+ -> result : 각 condittion을 key, StepAnalyzer를 value로 갖는 dict.
+'''
+def readFolder(folderName,condition):
     result = dict()
-    #condition = ["stair1","stair2","stair1_60","stair2_60","stair1_85","stair2_85"]
-
-    condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
     for c in condition:
         file_list = os.listdir(folderName)
         stepFiles = []
-        for i in range(0,10):
+        for i in range(0, 10):
             for name in file_list:
-                stepFiles.append(folderName + name + "/" + c + "/" + str(i)+ "/")
-        print(c)
-        result[c] = g.StepAnalyzer(stepFiles,False,c).GetResultList()
-    print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
-    Compare2Result(result["stair1_50"][0], result["stair1_75"][0])
+                stepFiles.append(folderName + name + "/" + c + "/" + str(i) + "/")
+        result[c] = g.StepAnalyzer(stepFiles, False, c)
+    return result
 
-    writeCSV(result,condition,"onFilter")
-        #plt.show()
+
+def WriteDataFrame(folderName, condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]):
+    result : g.StepAnalyzer = readFolder(folderName,condition)
+    for c in result.keys():
+        curDataFrameDict = result[c].dataFrameDict
+        for key in curDataFrameDict.keys():
+            curF = "dataFrame/"+ c +"/"
+            os.makedirs(curF,exist_ok=True)
+            curDataFrameDict[key].to_csv(curF + key +".csv")
+            print("write DataFrame in ", curF)
+    return
+
+
+def MakeHeadDataFrame(folderName):
+    condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
+    result  = readFolder(folderName,condition)
+    for c in condition:
+        df = result[c].MakeHeadFullTrajectoryData()
+        curF = "dataFrame/"+ c + "/"
+        os.makedirs(curF, exist_ok=True)
+        df.to_csv(curF + "HeadFull.csv")
+        #sns.lineplot(x="time", y="velY", data=df,label = c)
+
+def MakeAllTrajectoryDataFrame(folderName):
+    condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
+    result  = readFolder(folderName,condition)
+    for c in condition:
+        curF = "dataFrame/"+ c + "/"
+        df = result[c].MakeAllTrajectoryToCSV(curF)
+
+
+def reader(folderName):
+    condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
+    result = readFolder(folderName,condition)
+    writeCSV(result,condition,"11-17")
 
 def reader1(folderName):
     condition = ["stair1_60","stair2_60","stair1_85","stair2_85"]
@@ -149,11 +185,7 @@ def analyze(folderName):
         file_list = os.listdir(folderName)
         stepFiles = []
         for i in range(0,10):
-            stepFiles.append(folderName + "서민영" + "/" + c + "/" + str(i)+ "/")
-            stepFiles.append(folderName + "이철우" + "/" + c + "/" + str(i) + "/")
-            stepFiles.append(folderName + "박주현" + "/" + c + "/" + str(i) + "/")
-            stepFiles.append(folderName + "임수빈" + "/" + c + "/" + str(i) + "/")
-            stepFiles.append(folderName + "서승원" + "/" + c + "/" + str(i) + "/")
+            stepFiles.append(folderName + "박승준" + "/" + c + "/" + str(i)+ "/")
         cDatas[c] = g.StepAnalyzer(stepFiles,False)
     #plt.close()
     # print("compare(stair1_100,stair2_100)")
@@ -171,10 +203,9 @@ def analyze(folderName):
     #Compare2Result(cDatas[comparePair[0]].avgDicts, cDatas[comparePair[1]].avgDicts)
 
     f, axes = plt.subplots(2, 1)
-    cDatas[comparePair[0]].DrawAllHeadGraph(axes)
-    # for i in range(0,50):
-    #     axes[0].set_title(comparePair[0])
-    #     cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
+    for i in range(0,10):
+        axes[0].set_title(comparePair[0])
+        cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph_z(axes)
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C1")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color= "C0",label=comparePair[0],startIndex= cDatas[comparePair[0]].data[i].steps[0].validStart)
@@ -191,18 +222,19 @@ def analyze(folderName):
     #for i in range(0, 10):
     #    cDatas["stair2_30"].data[i].DrawPosAndVelGraph(axes)
 
-
-# for i in range(0,10):
-#     f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
-#     g.RecordedData(folder + "user3/임수빈/stair1_50/"+str(i)+"/", 2).DrawPosAndVelGraph(axes)
-#     g.RecordedData(folder + "user3/이철우/stair1_50/" + str(i) + "/", 2).DrawPosAndVelGraph(axes)
-#     g.RecordedData(folder + "user3/서승원/stair1_50/" + str(i) + "/", 2).DrawPosAndVelGraph(axes,color="gold")
-#     plt.show()
-
+def test():
+    for i in range(0,10):
+        f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
+        plt.title(str(i))
+        g.RecordedData(folder + "user3/박승준/stair2_75/"+str(i)+"/", 2).DrawPosAndVelGraph(axes)
+        plt.show()
 #lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")
-analyze(folder+"user3/")
-#reader(folder+"user3/")
+#analyze(folder+"user3/")
+#eader(folder+"user3/")
+#MakeHeadDataFrame(folder+"user3/")
+MakeAllTrajectoryDataFrame(folder+"user3/")
+#WriteDataFrame(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
 #g.RecordedData(folder+"user3/서민영/stair2_100/0/",2).DrawPosAndVelGraph(axes)
@@ -216,9 +248,3 @@ analyze(folder+"user3/")
 #Stair1.DrawGrahp(x = "Distance")
 #Stair2.DrawGrahp(x = "Distance")
 
-
-plt.show()
-
-
-#Stair2.DrawGrahp()
-#plt.show()
