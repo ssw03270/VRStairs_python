@@ -164,6 +164,12 @@ def makeVectorData(data,firstZero = True):
     vecData.append(pz)
     return vecData
 
+def Vector3ArrayToString(info):
+    dataTxt = ""
+    for i in range(len(info[0])):
+        dataTxt += Vector3(info[0][i],info[1][i],info[2][i]).ToString() + "\n"
+    return dataTxt
+
 
 class RecordedFootData():
     def __init__(self,fileName):
@@ -1273,6 +1279,7 @@ class RecordedData():
         self.RFootData = RecordedFootData(folderName + "RightFootController.txt")
         self.LFootData = RecordedFootData(folderName + "LeftFootController.txt")
         self.HeadData = [[]]
+        self.HeadRotation = [[]]
         self.testData = [[]]
         self.testVelData = [0]
         self.LoadHeadData(folderName + "otherData.txt")
@@ -1351,9 +1358,18 @@ class RecordedData():
         dataList = data.split("other\n")
         d = dataList[2].split("####\n")
         self.HeadData = makeVectorData(d[0].split('\n'),False)
+        self.HeadRotation = makeVectorData(d[1].split('\n'),False)
         d1 = dataList[1].split('####\n')
         self.testData = makeVectorData(d1[0].split("\n"),False)
         f.close()
+
+    def writeToTxt(self,path):
+        writeData(path + "Rfootdata.txt",Vector3ArrayToString(self.RFootData.blendPosData))
+        writeData(path + "Lfootdata.txt", Vector3ArrayToString(self.LFootData.blendPosData))
+        writeData(path + "RfootRotationData.txt", Vector3ArrayToString(self.RFootData.realRotData))
+        writeData(path + "LfootRotationData.txt", Vector3ArrayToString(self.LFootData.realRotData))
+        writeData(path + "WaistData.txt", Vector3ArrayToString(self.HeadData))
+
 
     def DrawHeadGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,avgInfo = None,addtionalHeight = 0,transX = 0):
         startIndex = max(self.findStartPoint(self.HeadVelData) -10 ,0)

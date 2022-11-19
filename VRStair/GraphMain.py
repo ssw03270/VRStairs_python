@@ -8,8 +8,8 @@ import pandas as pd
 import seaborn as sns
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
 #folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
-#folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
-folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
+folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+#folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
 #data =  g.RecordedData(folder)
 
 
@@ -77,11 +77,11 @@ def MakeHeadDataFrame(folderName):
         df.to_csv(curF + "HeadFull.csv")
         #sns.lineplot(x="time", y="velY", data=df,label = c)
 
-def MakeAllTrajectoryDataFrame(folderName):
-    condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
+def MakeAllTrajectoryDataFrame(folderName,method= ""):
+    condition = ["stair1_50", "stair1_75", "stair1_100"]#,"stair2_50", "stair2_75", "stair2_100"]
     result  = readFolder(folderName,condition)
     for c in condition:
-        curF = "dataFrame/"+ c + "/"
+        curF = "dataFrame/"+method + "/" + c + "/"
         df = result[c].MakeAllTrajectoryToCSV(curF)
 
 
@@ -222,18 +222,31 @@ def analyze(folderName):
     #for i in range(0, 10):
     #    cDatas["stair2_30"].data[i].DrawPosAndVelGraph(axes)
 
+def ConvertRecordedData(inPath):
+    condition = ["stair1_50","stair1_75","stair1_100"]
+    for c in condition:
+        for i in range(0,10):
+            curPath = inPath + c + "/" + str(i) + "/"
+            g.RecordedData(curPath).writeToTxt(curPath)
+
+
+
 def test():
     for i in range(0,10):
         f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
         plt.title(str(i))
         g.RecordedData(folder + "user3/박승준/stair2_75/"+str(i)+"/", 2).DrawPosAndVelGraph(axes)
         plt.show()
+
+
+#ConvertRecordedData(folder + "ex3/seo/서승원/")
 #lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")
 #analyze(folder+"user3/")
 #eader(folder+"user3/")
 #MakeHeadDataFrame(folder+"user3/")
-MakeAllTrajectoryDataFrame(folder+"user3/")
+#MakeAllTrajectoryDataFrame(folder+"user3/","real")
+MakeAllTrajectoryDataFrame(folder+"ex3/our/","our")
 #WriteDataFrame(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
