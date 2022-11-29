@@ -1,0 +1,1 @@
+stairHeight:0.25,bpm:75

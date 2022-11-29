@@ -5,25 +5,17 @@
 import numpy as np
 import os
 import random
+from define import *
 import math
 import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.signal import savgol_filter
 import csv
 import seaborn as sns
+import TrajectoryCSVReader
 
-startDeltaLength = 6
-fixedDeltaTime = 0.011111
-#folder = "blendingData/0722-compare/"
-folder = "blendingData/realStair/"
-#folder = "blendingData/"
-rFootName = "RightFootController_"
-lFootName = "LeftFootController_"
-realName = "realTrajectory"
-blendName = "blendedTrajectory"
-filterSize = 51
+
 defalutDF  =  pd.DataFrame({"index":[],"time":[],"y":[],"velY":[]})
-
 
 
 class Vector3:
@@ -171,6 +163,7 @@ def Vector3ArrayToString(info):
     return dataTxt
 
 
+
 class RecordedFootData():
     def __init__(self,fileName):
         self.realPosData = []
@@ -264,10 +257,9 @@ class H2F_Data():
 
 
     def get_after_lp_velocity(self,pre):
-
+        self.firstHeadHeight = self.HeadData[1][0]
         return
 
-        self.firstHeadHeight = self.HeadData[1][0]
 
     def WriteHeadHeightChange(self,infoDict):
         firstAvgHead = 0
