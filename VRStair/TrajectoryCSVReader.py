@@ -3,6 +3,7 @@ import string
 import pandas
 
 from define import *
+from TrajectorySplitter import *
 from scipy.signal import savgol_filter
 import pandas as pd
 import numpy as np
@@ -18,13 +19,7 @@ ex2Folder = ProjectFolder + "/foot_dataset/ex2/"
 MethodPerColor = {"Ours":"r","Seo": "g", "Nagao":"b"}
 
 #f, axes = plt.subplots(3, 1)
-def MakeVelData(posData,smoothON = False):
-    velData = [0]
-    if smoothON :
-        posData = savgol_filter(posData, filterSize, 6)
-    for i in range(1,len(posData)):
-        velData.append((posData[i] - posData[i-1])/fixedDeltaTime)
-    return velData.copy()
+
 
 class Ex2Trajectory:
     StepId = 0

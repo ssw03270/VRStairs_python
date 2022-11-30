@@ -12,7 +12,6 @@ import pandas as pd
 from scipy.signal import savgol_filter
 import csv
 import seaborn as sns
-import TrajectoryCSVReader
 
 
 defalutDF  =  pd.DataFrame({"index":[],"time":[],"y":[],"velY":[]})
@@ -61,6 +60,8 @@ def writeData(path,content):
     file = open(path, "w")
     file.write(content)
     file.close()
+
+
 
 def loadPosData(flieName):
     f = open(flieName, 'r')
@@ -156,6 +157,12 @@ def makeVectorData(data,firstZero = True):
     vecData.append(pz)
     return vecData
 
+def FloatArrayToString(info):
+    dataTxt= ""
+    for i in range(len(info)):
+        dataTxt += str(info[i]) + "\n"
+    return dataTxt
+
 def Vector3ArrayToString(info):
     dataTxt = ""
     for i in range(len(info[0])):
@@ -165,12 +172,14 @@ def Vector3ArrayToString(info):
 
 
 class RecordedFootData():
-    def __init__(self,fileName):
+    def __init__(self,fileName,firstZero=True):
         self.realPosData = []
         self.realVelData = [[0],[0],[0]]
         self.realRotData = []
         self.blendPosData = []
         self.trackerHeightData = []
+        self.firstZero = firstZero
+
         self.LoadFootData(fileName)
 
     def LoadFootData(self,fileName):
@@ -178,9 +187,9 @@ class RecordedFootData():
         data = f.read()
         # 현실 위치, 회전, 조작된 위치, 트래커 높이
         dataList = data.split("####\n")
-        self.realPosData = makeVectorData(dataList[0].split('\n'))
-        self.realRotData = makeVectorData(dataList[1].split('\n'))
-        self.blendPosData = makeVectorData(dataList[2].split('\n'))
+        self.realPosData = makeVectorData(dataList[0].split('\n'),firstZero=self.firstZero)
+        self.realRotData = makeVectorData(dataList[1].split('\n'),firstZero=self.firstZero)
+        self.blendPosData = makeVectorData(dataList[2].split('\n'),firstZero=self.firstZero)
         thd = dataList[3].split()
         self.onFilter = True
         for t in thd:
@@ -190,6 +199,13 @@ class RecordedFootData():
                     self.realVelData[j].append((self.realPosData[j][i] - self.realPosData[j][i-1]) / fixedDeltaTime)
         self.realVelData[1] = savgol_filter(self.realVelData[1], filterSize, 6)
         f.close()
+
+    def to_txt(self):
+        dataTxt = Vector3ArrayToString(self.realPosData) + "####\n"\
+                  + Vector3ArrayToString(self.realRotData) + "####\n" \
+                  + Vector3ArrayToString(self.blendPosData) + "####\n" + FloatArrayToString(self.trackerHeightData)
+        return dataTxt
+
 
 class H2F_Data():
     def __init__(self,folderName,onFilter = False):
@@ -1254,11 +1270,11 @@ class StepAnalyzer():
 
 
 class RecordedData():
-    def __init__(self,folderName,format = 1):
+    def __init__(self,folderName,format = 1,firstZero = True):
         self.Format = format
         self.RFootData = None
         self.LFootData = None
-
+        self.firstZero = firstZero
         if(format == 1):
             self.init_1(folderName)
         elif(format == 2):
@@ -1268,8 +1284,8 @@ class RecordedData():
 
 
     def init_1(self,folderName):
-        self.RFootData = RecordedFootData(folderName + "RightFootController.txt")
-        self.LFootData = RecordedFootData(folderName + "LeftFootController.txt")
+        self.RFootData = RecordedFootData(folderName + "RightFootController.txt",self.firstZero)
+        self.LFootData = RecordedFootData(folderName + "LeftFootController.txt",self.firstZero)
         self.HeadData = [[]]
         self.HeadRotation = [[]]
         self.testData = [[]]
@@ -1355,6 +1371,49 @@ class RecordedData():
         self.testData = makeVectorData(d1[0].split("\n"),False)
         f.close()
 
+    def makeTimeString(self):
+        dataString = ""
+        for i in range(len(self.HeadData[0])):
+            dataString += str(fixedDeltaTime) + "\n"
+        return dataString
+
+
+    def makeOtherDataString(self):
+        dataTxt = "other\n"+Vector3ArrayToString(self.HeadData) + "####\n"+Vector3ArrayToString(self.HeadRotation)
+        return dataTxt
+
+    def HeightTrajectorySynthesize(self,newYData,axes):
+        s = max(self.findStartPoint2(self.RFootData.realPosData[1]) ,0)
+        end = min(s + len(newYData)-1,len(self.RFootData.realPosData[0])-1)
+        axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
+        axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
+        print(s,end)
+        for i in range(s,end):
+            self.RFootData.realPosData[1][i] = self.RFootData.realPosData[1][s] + newYData[i-s]
+        self.RFootData.realPosData[1][end:] = [self.RFootData.realPosData[1][s] + newYData[i-s]] * len(self.RFootData.realPosData[1][end:])
+        s = self.findStartPoint2(self.LFootData.realPosData[1])
+        end = min(s + len(newYData)-1,len(self.LFootData.realPosData[0])-1)
+        axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
+        axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
+        for i in range(s,end):
+            self.LFootData.realPosData[1][i] = self.RFootData.realPosData[1][s] + newYData[i-s]
+        self.LFootData.realPosData[1][end:] = [self.LFootData.realPosData[1][s] + newYData[i - s]] * len(self.LFootData.realPosData[1][end:])
+
+        s = s+50+self.findStartPoint2(self.RFootData.blendPosData[1][s+50:])
+        end = min(s + len(newYData)-1,len(self.RFootData.realPosData[0])-1)
+
+        axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
+        axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
+
+        for i in range(s,end):
+            self.RFootData.realPosData[1][i] = self.RFootData.realPosData[1][s] + newYData[i-s]
+
+    def writeToTxt1(self,path):
+        writeData(path + "RightFootController.txt",self.RFootData.to_txt())
+        writeData(path + "LeftFootController.txt",self.LFootData.to_txt())
+        writeData(path + "otherData.txt",self.makeOtherDataString())
+        writeData(path + "timeData.txt",self.makeTimeString())
+
     def writeToTxt(self,path):
         writeData(path + "Rfootdata.txt",Vector3ArrayToString(self.RFootData.blendPosData))
         writeData(path + "Lfootdata.txt", Vector3ArrayToString(self.LFootData.blendPosData))
@@ -1419,10 +1478,10 @@ class RecordedData():
         if self.Format == 1:
             #axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
             #axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
-            axes[0].plot(xAxis, rfoot[1][startIndex:endIndex] - self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
-                         label="Lfoot(add)" + additionalLabel)
-            axes[0].plot(xAxis, lfoot[1][startIndex:endIndex] - self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
-                         label="Rfoot(add)" + additionalLabel)
+            axes[0].plot(xAxis, self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
+                         label="Lfoot(real)" + additionalLabel)
+            axes[0].plot(xAxis, self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
+                         label="Rfoot(real)" + additionalLabel)
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
@@ -1434,6 +1493,7 @@ class RecordedData():
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
         axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed"+ additionalLabel)
         axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed"+ additionalLabel)
+
         # if self.Format == 1:
         #     axes[1].plot(xAxis,self.RFootData.realVelData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
         #     axes[1].plot(xAxis,self.LFootData.realVelData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
@@ -1447,15 +1507,21 @@ class RecordedData():
         return
 
     def findStartPoint(self,Veldata):
-
         for i in range(10,len(Veldata)):
             check = True
             for j in range(i,i+10):
-                if Veldata[j] < 0.1 or Veldata[j] > 1:
+                if Veldata[j] < 0.05 or Veldata[j] > 1:
                     check = False
                     break
             if check:
                 return i
+    def findStartPoint2(self,posData):
+        for i in range(len(posData)):
+            if posData[i]-posData[0] > 0.02:
+                print(i)
+                return i
+        print("not found")
+        return i
 
 
     def DrawGrahp(self,x = "Time",color = None, label = None):
