@@ -32,6 +32,8 @@ def MakeVelData(posData,smoothON = False):
 잘못 잘린건지 검사하는 함수임.
 '''
 def isValidStep(data,Th):
+    if len(data) <= 30:
+        return False
     if max(data) - min(data) < Th:
         return False
     if data[0] - data[-1] > Th * 0.5:
@@ -40,14 +42,20 @@ def isValidStep(data,Th):
         return True
 
 def FindStartPoint(posData):
-    velData = MakeVelData(posData)
+    #velData = MakeVelData(posData)
     startIndex = 0
     for i in range(len(posData)-3):
-        if (velData[i] > 0.02 and velData[i+1] > 0.02 and velData[i+2] > 0.02):
+        if (posData[i]-posData[0] > 0.02 and posData[i+1]-posData[0] > 0.02 and posData[i+2]-posData[0] > 0.02):
             startIndex = i;
             break;
     return startIndex
 
+def FindEndPoint(posData):
+    velData = MakeVelData(posData)
+    for i in range(len(posData)-1,0,-1):
+        if abs(velData[i]) > 0.1:
+            return i
+    return len(posData)-1
 
 '''
 높이 궤적이 주어지면, 궤적이 올라가는 시작점과 끝 부분을 찾아줌.

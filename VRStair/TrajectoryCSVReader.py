@@ -184,7 +184,7 @@ class Ex2Trajectory:
         validTh = max(posData) * 0.6
         for j in range(len(pointList)-1):
             start = pointList[j]; end = pointList[j+1]
-            start += self.findStartPointByPos(posData[start:end])
+            start += FindStartPoint(posData[start:end])#self.findStartPointByPos(posData[start:end])
             if self.isValidStep(posData[start:end],validTh):
                 resultList.append((start,end))
 
@@ -299,17 +299,49 @@ def DrawPerParameter(height,method,bpm,person,axes):
     lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) &  (lData["name"] == person)]
     stepList1 = rDf["StepId"].unique()
     stepList2 = lDf["StepId"].unique()
+    #print(stepList1)
     for s in stepList1:
         data = rDf[rDf["StepId"] == s]
         d = np.array(data["posY"])
-
         axes.plot(list(np.arange(0, len(data["posY"]))), d ,color = MethodPerColor[method])
 
-    for s in stepList2:
-        data = lDf[lDf["StepId"] == s]
-        d = np.array(data["posY"])
-        axes.plot(list(np.arange(0, len(data["posY"]))), d, color=MethodPerColor[method])
+    # for s in stepList2:
+    #     data = lDf[lDf["StepId"] == s]
+    #     d = np.array(data["posY"])
+    #     axes.plot(list(np.arange(0, len(data["posY"]))), d, color=MethodPerColor[method])
 
+def DrawPerParameterXYZ(height,method,bpm,person,axes,i):
+    rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) &  (rData["name"] == person)]
+    lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) &  (lData["name"] == person)]
+    Df= pd.concat([rDf,lDf],ignore_index=True)
+    stepList1 = Df["StepId"].unique()
+    #stepList2 = lDf["StepId"].unique()
+    #print(stepList1)
+    for s in stepList1:
+        data = Df[Df["StepId"] == s]
+        dx = np.array(data["posX"])
+        dy = np.array(data["posY"])
+        dz = np.array(data["posZ"])
+        axes[0][i].plot(list(np.arange(0, len(data["posX"]))), abs(dx-dx[0]) , color=MethodPerColor[method])
+        axes[1][i].plot(list(np.arange(0, len(data["posY"]))), dy -dy[0],color = MethodPerColor[method])
+        axes[2][i].plot(list(np.arange(0, len(data["posZ"]))), dz-dz[0], color=MethodPerColor[method])
+
+def DrawPerParameterXYZMean(height,method,bpm,axes,i):
+    rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) ]
+    lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) ]
+    data = pd.concat([rDf, lDf], ignore_index=True)
+
+    sList = data["StepId"].unique()
+    for s in sList:
+        dd = data[data["StepId"] == s]
+        x = np.array(dd["posX"])
+        x = abs(x - x[0])
+        #for i in range(len(dd)):
+        data.loc[(data["StepId"] == s),"posX"] = x
+    data = data.groupby('index').mean()
+    axes[0][i].plot(list(np.arange(0, len(data["posX"]))),data["posX"], color = MethodPerColor[method])
+    axes[1][i].plot(list(np.arange(0, len(data["posY"]))),data["posY"], color = MethodPerColor[method])
+    axes[2][i].plot(list(np.arange(0, len(data["posZ"]))),data["posZ"], color = MethodPerColor[method])
 
 def DrawPerParameterMean(height, method, bpm, axes):
     rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) ]
@@ -328,6 +360,8 @@ def DrawPerParameterMean(height, method, bpm, axes):
     # data = lDf.groupby('index').mean( )
     # d = np.array(data["posY"])
     # axes.plot(list(np.arange(0, len(data["posY"]))), d - d[0], color=MethodPerColor[method])
+
+
 
 def DrawStairHeightAndMethod(height,method,bpm,axes):
     rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm)]
@@ -397,26 +431,52 @@ def SaveTrajectoryPngPerPerSon(pName):
     plt.savefig(pName+'.png',dpi=200)
     plt.show()
     #plt.cla()
-    # DrawStairHeightAndMethod(0.2, "Ours", 50, axes[0])
-    # DrawStairHeightAndMethod(0.2, "Seo", 50, axes[0])
-    # DrawStairHeightAndMethod(0.2, "Nagao", 50, axes[0])
-    # DrawStairHeightAndMethod(0.2,"Ours",75,axes[1])
-    # DrawStairHeightAndMethod(0.2,"Seo",75,axes[1])
-    # DrawStairHeightAndMethod(0.2,"Nagao",75,axes[1])
-    # DrawStairHeightAndMethod(0.2, "Ours", 100, axes[2])
-    # DrawStairHeightAndMethod(0.2, "Seo", 100, axes[2])
-    # DrawStairHeightAndMethod(0.2, "Nagao", 100, axes[2])
+
+def SaveTrajectoryPngPerPerSonXYZ(pName):
+    f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
+    for h in range(len(heightList)):
+        axes[0][h].set_title(str.format("h : {0}", heightList[h]))
+        print(h)
+        for m in methodList:
+            #for i in range(0,3):
+            DrawPerParameterXYZ(heightList[h], m, bpmList[1], pName, axes,h)
+            # axes[i][h].set_xlim(0, 140)
+            # axes[i][h].set_ylim(-0.1, 0.8)
+            # axes[i][h].grid(True)
+
+    axes[0][0].set_ylabel("X")
+    axes[1][0].set_ylabel("Y")
+    axes[2][0].set_ylabel("Z")
+    plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
+    plt.show()
+
+def SaveTrajectoryPngXYZMean():
+    f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
+    for h in range(len(heightList)):
+        axes[0][h].set_title(str.format("h : {0}", heightList[h]))
+        print(h)
+        for m in methodList:
+            #for i in range(0,3):
+            DrawPerParameterXYZMean(heightList[h], m, bpmList[0], axes,h)
+            # axes[i][h].set_xlim(0, 140)
+            # axes[i][h].set_ylim(-0.1, 0.8)
+            # axes[i][h].grid(True)
+
+    axes[0][0].set_ylabel("X")
+    axes[1][0].set_ylabel("Y")
+    axes[2][0].set_ylabel("Z")
+    plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
+    plt.show()
 
 
-    #plt.show()
-
-
-#sets = TrajectorySet(ex2Folder)
+sets = TrajectorySet(ex2Folder)
 SaveTrajectoryPng()
-
+#SaveTrajectoryPngXYZMean()
 # for PNAME in pNameList:
-#      SaveTrajectoryPngPerPerSon(PNAME)
-#DrawPerParameter("0.125","Nagao",50,"김봉규")
+#      SaveTrajectoryPngPerPerSonXYZ(PNAME)
+# f,a = plt.subplots(2,1)
+# DrawPerParameter("0.125","Nagao",75,"강경은",a)
+# plt.show()
 
 # f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
 # axes[0][0].grid(True)
