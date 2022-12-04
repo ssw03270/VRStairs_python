@@ -68,7 +68,6 @@ input <- (posdata [] , Th : float, interval : int , NotRemove : bool , isDebug :
 output -> [(s1,e2),,,,(s_n,e_n)] 
 '''
 def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = False):
-    f,axes = plt.subplots(3,1)
     posData = savgol_filter(posData,51,6)
     velData = MakeVelData(posData)
     aData = MakeVelData(velData,True)
@@ -108,7 +107,7 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
                 resultList.append((sIndex, end))
 
     if isDebug:
-        print(resultList)
+        f, axes = plt.subplots(3, 1)
         axes[0].plot(posData)
         axes[1].plot(velData)
         axes[2].plot(aData)
@@ -123,5 +122,20 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
         plt.show()
 
     return resultList
+
+
+def FindGroundHeight(posData,velData = None):
+    if type(velData) is None:
+        velData = MakeVelData(posData)
+    sumGroundHeight = 0
+    count = 1
+    maxH = max(posData)
+    for i,v in enumerate(velData):
+        if abs(v) < 0.01 and posData[i] < maxH/2:
+            sumGroundHeight += posData[i]
+            count += 1
+
+    return (sumGroundHeight/count)
+
 
 

@@ -1,9 +1,25 @@
-import string
+
+'''
+Ex2 데이터를 분석하기 위한 코드
+EX2 10칸씩 걸은 궤적 데이터를 csv 형식으로 저장해 둠. 이 csv를 분석하는 코드.
+
+1) .csv가 모여있는 폴더 이름을 얻는다   -->  def GetTrajectoryFolders(self,trajectoryFolder):
+    폴더 이름 및 info.txt를 통해 해당 csv의 사용자 이름,bpm, method, stair height 정보를 알 수 있음. --> Ex2Trajectory에 저장.
+
+2) Ex2Trajectory : 10칸을 걷는 동안의 궤적 csv를 저장. 발걸음 분리를 해줌.
+      - 이 발걸음(StepId)을 누가(name) , 어떤 bpm으로 , 어떤 stair height 를 , 어떤 방법으로 올랐는지를 csv로 저장함.
+      - csv 형식 :   posX,posY,posZ,RotX,RotY,RotZ,RotW,vPosX,vPosY,vPosZ,initH,bpm,name,method,stairHeight,StepId,index
+
+3) 그 발걸음(Step) 데이터들을 모아서 평균 높이 궤적을 구하고, csv로 저장.
+     - csv 형식 : ,y,bpm,method,stairHeight
+
+'''
 
 import pandas
-
 from define import *
+from utility import *
 from TrajectorySplitter import *
+import GraphMaker as g
 from scipy.signal import savgol_filter
 import pandas as pd
 import numpy as np
@@ -15,34 +31,34 @@ ProjectFolder = os.getcwd()  #"C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C
 ProjectFolder = ProjectFolder.replace("\\","/",10)
 
 ex2Folder = ProjectFolder + "/foot_dataset/ex2/"
+ex3Folder = ProjectFolder + "/foot_dataset/ex3/"
 
 MethodPerColor = {"Ours":"r","Seo": "g", "Nagao":"b"}
+bpmList = [50,75,100]
+heightList = [0.125,0.15,0.175,0.2,0.225,0.25]
+methodList = ["Ours","Seo","Nagao"]
+pNameList = ["강경은","이철우","이로운","김봉규","하창범"]
 
-#f, axes = plt.subplots(3, 1)
 
-
-class Ex2Trajectory:
+class Trajectory:
     StepId = 0
-    def __init__(self,foloderName : str):
-        self.folder = foloderName
-        tIndex = self.folder[-5:-1].find("c")
-        infoFolder = self.folder[:-5+tIndex] + "c" + str(int(self.folder[-5+tIndex+1:-1])+1) + "/"
-        #print(infoFolder)
-        f = open(infoFolder+ "info.txt" , 'r')
-        info = f.read()
-        f.close()
-        self.stairHeight = float(info[info.find(":") + 1 : info.find(",")])
-        self.bpm = float(info[info.find(",") + 5 : ])
-        self.method = self.getMethod()
-        self.name = self.getName()
-        self.rFoot = pd.read_csv(self.folder + "RightFootController.csv",encoding='utf-8')
-        self.lFoot = pd.read_csv(self.folder + "LeftFootController.csv",encoding='utf-8')
-        self.head = pd.read_csv(self.folder + "Head.csv")
+    def __init__(self,folderName : str):
+        self.folder = folderName
+        self.stairHeight : float = 0
+        self.bpm :int = 0
+        self.method : str = "method"
+        self.name : str = "name"
+        self.rFoot : pd.DataFrame = pd.DataFrame()
+        self.lFoot : pd.DataFrame = pd.DataFrame()
+        #self.head =  pd.DataFrame()
         self.rSplitPoints = []
         self.lSplitPoints = []
+        self.init()
         self.Split()
-        #self.MakeDataFrame()
 
+    def init(self):
+        print("test")
+        pass
 
     def MakeDataFrame(self):
         if len(self.rSplitPoints) > 0 and len(self.lSplitPoints) > 0 :
@@ -58,11 +74,11 @@ class Ex2Trajectory:
         newDf['name'] = self.name
         newDf['method'] = self.method
         newDf['stairHeight'] = self.stairHeight
-        newDf['StepId'] = Ex2Trajectory.StepId
+        newDf['StepId'] = Trajectory.StepId
         newDf['index'] = list(range(0,e-s+1))
-        Ex2Trajectory.StepId += 1
+        Trajectory.StepId += 1
 
-        print(Ex2Trajectory.StepId)
+        print(Trajectory.StepId)
 
         return newDf.copy()
 
@@ -74,21 +90,9 @@ class Ex2Trajectory:
 
         return totalDF
 
-    def getName(self):
-        index = self.folder.find("ex2/")
-        return self.folder[index + 4: index + 7]
-
-    def getMethod(self):
-        if "BoundaryGaussian" in self.folder:
-            return "Ours"
-        elif "ascendingDescending" in self.folder:
-            return "Nagao"
-        else:
-            return "Seo"
-
     def findStartPoint(self,vel):
         mid = 0
-        for p in range(70,len(vel)):
+        for p in range(20,len(vel)):
             if vel[p] > 0.5 and vel[p] < 2:
                 mid = p
                 break
@@ -120,13 +124,13 @@ class Ex2Trajectory:
 
     def Split(self):
         d = np.array(self.rFoot["posY"])
-        startI = self.findStartPoint(MakeVelData(d))
-        self.rFoot["posY"] = savgol_filter(d - d[startI], filterSize, 6)
+        startH = FindGroundHeight(d,MakeVelData(d)) #d[self.findStartPoint(MakeVelData(d))]
+        self.rFoot["posY"] = savgol_filter(d - startH, filterSize, 6)
         self.rSplitPoints = self.splitTrajectory(np.array(self.rFoot["posY"]))
 
         d = np.array(self.lFoot["posY"])
-        startI = self.findStartPoint(MakeVelData(d))
-        self.lFoot["posY"] = savgol_filter(d - d[startI], filterSize, 6)
+        startH = FindGroundHeight(d, MakeVelData(d)) # d[self.findStartPoint(MakeVelData(d))]
+        self.lFoot["posY"] = savgol_filter(d - startH, filterSize, 6)
         self.lSplitPoints = self.splitTrajectory(np.array(self.lFoot["posY"]))
 
     def splitTrajectory(self,posData,isDebug = False):
@@ -135,8 +139,8 @@ class Ex2Trajectory:
         aData = MakeVelData(velData,True)
         pList = self.GetPointList(posData,velData)
 
-        # if self.stairHeight == 0.25 and self.bpm == 50:
-        #     isDebug = True
+        if self.stairHeight == 0.25 and self.bpm == 50 and self.name == "임수빈":
+            isDebug = True
 
         if isDebug:
             f, axes = plt.subplots(3, 1)
@@ -206,12 +210,46 @@ class Ex2Trajectory:
         # plt.plot(self.head["RotY"][1:] - self.head["RotY"][0])
         #plt.show()
 
+'''
+Ex2 에서 기록한 csv 파일을 자르기 위한 class
+'''
+class Ex2Trajectory(Trajectory):
+    def __init__(self,foloderName : str):
+        super().__init__(foloderName)
 
-class TrajectorySet:
+    def init(self):
+        tIndex = self.folder[-5:-1].find("c")
+        infoFolder = self.folder[:-5+tIndex] + "c" + str(int(self.folder[-5+tIndex+1:-1])+1) + "/"
+        f = open(infoFolder+ "info.txt" , 'r')
+        info = f.read()
+        f.close()
+        self.stairHeight = float(info[info.find(":") + 1 : info.find(",")])
+        self.bpm = float(info[info.find(",") + 5 : ])
+        self.method = self.getMethod()
+        self.name = self.getName()
+        self.rFoot = pd.read_csv(self.folder + "RightFootController.csv",encoding='utf-8')
+        self.lFoot = pd.read_csv(self.folder + "LeftFootController.csv",encoding='utf-8')
+        #self.head = pd.read_csv(self.folder + "Head.csv")
+
+
+    def getName(self):
+        index = self.folder.find("ex2/")
+        return self.folder[index + 4: index + 7]
+
+    def getMethod(self):
+        if "BoundaryGaussian" in self.folder:
+            return "Ours"
+        elif "ascendingDescending" in self.folder:
+            return "Nagao"
+        else:
+            return "Seo"
+
+
+class Ex2TrajectorySet:
     def __init__(self,trajectoryFolder):
         self.case = dict()
         self.folders = self.GetTrajectoryFolders(trajectoryFolder)
-        Ex2Trajectory.StepId = 0
+        Trajectory.StepId = 0
         isFirst = True
         rDf = pd.DataFrame()
         lDf = pd.DataFrame()
@@ -268,17 +306,63 @@ class TrajectorySet:
             t.Draw()
 
 
-#sets.test((0.25,100,"Nagao"))
-#sets.Draw((0.25,100,"Ours"))
-#sets.Draw((0.25,75,"Seo"))
-#sets.Draw((0.125,50,"Nagao"))
-# plt.legend()
-# plt.show()
+'''
+- 가상발 형식으로 되어있는 데이터의 발걸음 분리.
+- 저장되어 있는 폴더 구조 : "ex3/method/사용자이름/계단높이_bpm/n" - 저장 되어 있음.
+'''
+class Trajectory_RD(Trajectory):
+    def __init__(self,folderName):
+        super().__init__(folderName)
 
-bpmList = [50,75,100]
-heightList = [0.125,0.15,0.175,0.2,0.225,0.25]
-methodList = ["Ours","Seo","Nagao"]
-pNameList = ["강경은","이철우","이로운","김봉규","하창범"]
+    def init(self):
+        self.infoDict = {}
+        self.makeInfo()
+        self.bpm = self.getBpm()
+        self.stairHeight = self.getHeight()
+        self.method = self.getMethod()
+        self.name = self.getName()
+        self.rFoot = g.RecordedFootData(self.folder + "RightFootController.txt").to_dataframe()
+        self.lFoot =  g.RecordedFootData(self.folder + "LeftFootController.txt").to_dataframe()
+
+    def GetPointList(self,posData,velData):
+        return FindPoints(posData)
+
+    def makeInfo(self):
+        key = ["ex","method","name","height","bpm"]
+        index = self.folder.find("ex3/")
+        value = self.folder[index:].split("/")
+        self.infoDict = dict(zip(key,value))
+        h,bpm = GetHeightAndBPM(self.infoDict["height"])
+        self.infoDict["height"] = float(h)
+        self.infoDict["bpm"] = int(bpm)
+
+    def getName(self):
+        return self.infoDict["name"]
+
+    def getMethod(self):
+        return self.infoDict["method"]
+
+    def getHeight(self):
+        return self.infoDict["height"]
+
+    def getBpm(self):
+        return self.infoDict["bpm"]
+
+def MakeMeanTrajectoryByRecordedData(folderName):
+    fList = GetFolderList(folderName)
+    rDf = pd.DataFrame()
+    lDf = pd.DataFrame()
+    for f in fList:
+        t = Trajectory_RD(f)
+        r, l = t.MakeDataFrame()
+        if r is not None and l is not None:
+            rDf = pd.concat([rDf, r])
+            lDf = pd.concat([lDf, l])
+    rDf.to_csv("R_test.csv",encoding='utf-8-sig')
+    lDf.to_csv("L_test.csv",encoding='utf-8-sig')
+    return
+
+
 
 
 rData = pd.read_csv("R_test.csv",encoding='utf-8-sig')
@@ -347,7 +431,7 @@ def DrawPerParameterMean(height, method, bpm, axes):
     rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) ]
     lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) ]
     cutLength = {50: 100, 75 : 75, 100 : 60}
-    data = pd.concat([rDf,lDf],ignore_index=True).groupby('index').mean()
+    data = lDf.groupby("index").mean() #pd.concat([rDf,lDf],ignore_index=True).groupby('index').mean()
     d= np.array(data["posY"])
 
     for i in range(len(d)):
@@ -469,21 +553,41 @@ def SaveTrajectoryPngXYZMean():
     plt.show()
 
 
-sets = TrajectorySet(ex2Folder)
-SaveTrajectoryPng()
+def SaveTrajectory1():
+    f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
+    df = pandas.DataFrame()
+
+    hList = [0.125,0.25]
+    for h in range(len(hList)):
+        axes[0][h].set_title(str.format("h : {0}", hList[h]))
+        print(h)
+        for m in methodList:
+            for i in range(0,3):
+                newdf = DrawPerParameterMean(hList[h], m, bpmList[i],axes[i][h])
+                df = pd.concat([df,newdf])
+                axes[i][h].set_xlim(0, 140)
+                axes[i][h].set_ylim(-0.1, 0.8)
+                axes[i][h].grid(True)
+    df.to_csv("test.csv")
+    axes[0][0].set_ylabel("bpm : 50")
+    axes[1][0].set_ylabel("bpm : 75")
+    axes[2][0].set_ylabel("bpm : 100")
+    plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
+    plt.gcf().set_size_inches(10, 5)
+    plt.savefig('test.png',dpi=200)
+    plt.show()
+
+#MakeMeanTrajectoryByRecordedData(ex3Folder)
+
+#SaveTrajectory1()
+
+#sets = Ex2TrajectorySet(ex2Folder)
+#SaveTrajectoryPng()
 #SaveTrajectoryPngXYZMean()
-# for PNAME in pNameList:
-#      SaveTrajectoryPngPerPerSonXYZ(PNAME)
+# for PNAME in ["임수빈","김미송","서승원"]:
+#      SaveTrajectoryPngPerPerSon(PNAME)
 # f,a = plt.subplots(2,1)
 # DrawPerParameter("0.125","Nagao",75,"강경은",a)
 # plt.show()
-
-# f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
-# axes[0][0].grid(True)
-# axes[0][0].set_title("test")
-# DrawStairHeightAndMethod(0.2, "Nagao", 100, axes[0][0])
-# DrawStairHeightAndMethod(0.2, "Nagao", 75, axes[1][0])
-# plt.show()
-
 
 

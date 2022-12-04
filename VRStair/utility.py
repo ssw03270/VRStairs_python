@@ -1,5 +1,6 @@
 
 import math
+import os
 import numpy as np
 
 class Vector3:
@@ -164,3 +165,39 @@ def FindMaxIndex(arr):
     m = max(arr)
     return list(arr).index(m)
 
+
+
+'''
+ex) 
+input : stair1_50 => output : 0.125, 50
+input : stair2_75 -> output : 0.25, 75
+'''
+def GetHeightAndBPM(case : str):
+    s = case.split("_")
+    height = 0.125
+    bpm = s[1]
+    if "2" in s[0]:
+        height = 0.25
+    return height,bpm
+
+
+'''
+폴더 형식이 다음과 같이 저장 되어있을 때 
+ - /Ours/김미송/stair1_100/0/
+ -/method/이름/height_bpm/count/
+ input --> str: "D:/Desktop/VRStairs_python/VRStair/foot_dataset/ex3/"
+->['D:/Desktop/VRStairs_python/VRStair/foot_dataset/ex3/Ours/김미송/stair1_100/0/', 'D:/Desktop/VRStairs_python/VRStair/foot_dataset/ex3/Ours/김미송/stair1_100/1/'...'']
+이런 식으로 폴더 리스트 만들어 줌.
+'''
+def GetFolderList(folderName,methodList = ["Ours", "Seo", "Nagao"],count = 5):
+    if not folderName.endswith("/"):
+        folderName += "/"
+    folderList = []
+    for m in methodList:
+        names = os.listdir(folderName + m + "/")
+        for n in names:
+            stair_cases = os.listdir(folderName + m + "/" + n + "/")
+            for s in stair_cases:
+                for i in range(count):
+                    folderList.append(folderName + m + "/" + n + "/" + s + "/" + str(i) + "/")
+    return folderList

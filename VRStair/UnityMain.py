@@ -40,8 +40,6 @@ d1 = g.DrawAVGHeadGraph(axes,"stair2_75")
 #     virtual = g.RecordedData(folder+"recodingTest/our/stair1_50/"+str(i)+"/",1).DrawHeadGraph(axes,startIndex=start,avgInfo=d1,additionalLabel="(boundary gaussian)")
 
 
-
-
 #virtual = g.RecordedData(folder+"recodingTest/AscendingDescending/stair1_50/3/",1).DrawHeadGraph(axes,startIndex=start,additionalLabel="(ascending and descending)")
 #virtual = g.RecordedData(folder+"recodingTest/test8/",1).DrawPosAndVelGraph(axes,startIndex=start,additionalLabel="(boundary gaussian)")
 #virtual = g.RecordedData(folder+"recodingTest/late/",1).DrawHeadGraph(axes,startIndex=start,additionalLabel="(late boundary gaussian)")

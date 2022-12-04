@@ -7,7 +7,9 @@ import os
 
 folder = "D:/Desktop/unity/VRStair/footdata/ex3/our/임수빈/stair2_100/4/"
 UnityFoloder = "D:/Desktop/unity/VRStair/footdata/"
-
+ProjectFolder = os.getcwd()  #"C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+ProjectFolder = ProjectFolder.replace("\\","/",10)
+ProjectFolder += "/foot_dataset/"
 def test():
     r = g.RecordedData(folder, firstZero=False)
     spl.FindPoints(r.RFootData.realPosData[1],NotRemove=False,isDebug=True)
@@ -42,24 +44,25 @@ def makeOne(fileName,bpm,height):
         make(UnityFoloder + fileName, UnityFoloder + saveFolder + "stair1_" + str(bpm) + "/" + method + "/", bpm,method,height)
 
 def makeTrajectory1():
-    fileList = ["ex3/our/임수빈/stair1_50/4/", "ex3/our/임수빈/stair1_75/1/", "ex3/our/김미송/stair1_100/1/"]
+    fileList = ["ex3/Ours/임수빈/stair1_50/4/", "ex3/Ours/임수빈/stair1_75/1/", "ex3/Ours/김미송/stair1_100/2/"]
     saveFolder = "/test/"
     bpmList = [50,75,100]
     methodList = ["Ours","Nagao","Seo"]
     for i,f in enumerate(fileList):
         for method in methodList:
             print(bpmList[i],method)
-            make(UnityFoloder+f,UnityFoloder + saveFolder  + "stair1_" +str(bpmList[i]) + "/"+method + "/",bpmList[i],method,0.125)
+            make(ProjectFolder+f,UnityFoloder + saveFolder + "stair1_" +str(bpmList[i]) + "/"+method + "/",bpmList[i],method,0.125)
 
 def makeTrajectory2():
-    fileList = ["ex3/our/임수빈/stair1_50/4/", "ex3/our/임수빈/stair1_75/1/", "ex3/our/김미송/stair2_100/2/"]
+    fileList = ["ex3/Ours/임수빈/stair1_50/4/", "ex3/Ours/임수빈/stair1_75/1/", "ex3/Ours/김미송/stair2_100/2/"]
     saveFolder = "/test/"
     bpmList = [50,75,100]
     methodList = ["Ours","Nagao","Seo"]
     for i,f in enumerate(fileList):
         for method in methodList:
             print(bpmList[i],method)
-            make(UnityFoloder+f,UnityFoloder + saveFolder  + "stair2_" +str(bpmList[i]) + "/"+method + "/",bpmList[i],method,0.25)
+            make(ProjectFolder+f,UnityFoloder + saveFolder + "stair2_" +str(bpmList[i]) + "/"+method + "/",bpmList[i],method,0.25)
+
 #makeOne("ex3/our/김미송/stair1_100/1/",100,0.125)
 makeTrajectory1()
 makeTrajectory2()

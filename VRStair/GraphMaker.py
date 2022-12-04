@@ -47,6 +47,21 @@ class RecordedFootData():
         self.realVelData[1] = savgol_filter(self.realVelData[1], filterSize, 6)
         f.close()
 
+    def to_dataframe(self):
+        df = pd.DataFrame({"posX":self.realPosData[0],
+                           "posY":self.realPosData[1],
+                           "posZ":self.realPosData[2],
+                           "RotX":self.realRotData[0],
+                           "RotY":self.realRotData[1],
+                           "RotZ":self.realRotData[2],
+                           "vPosX":self.blendPosData[0],
+                           "vPosY":self.blendPosData[1],
+                           "vPosZ":self.blendPosData[2],
+                           "initH":self.trackerHeightData})
+        return df
+
+
+
     def to_txt(self,start=0,end=-1):
         dataTxt = Vector3ArrayToString(self.realPosData,start,end) + "####\n"\
                   + Vector3ArrayToString(self.realRotData,start,end) + "####\n" \
@@ -122,7 +137,6 @@ class H2F_Data():
     def get_after_lp_velocity(self,pre):
         self.firstHeadHeight = self.HeadData[1][0]
         return
-
 
     def WriteHeadHeightChange(self,infoDict):
         firstAvgHead = 0
@@ -1028,8 +1042,6 @@ class StepAnalyzer():
             plt.show()
         self.AnalyzeStep(self.lastHeads)
 
-
-
     def GetAvgInfo(self,steps):
         infoDict = {"ascentVelocity" : 0,
                     "ascentDistance" :0,
@@ -1112,8 +1124,6 @@ class StepAnalyzer():
         rList.sort(reverse=True)
         for i in rList:
             del steps[i]
-
-
 
 
 class RecordedData():
@@ -1214,6 +1224,7 @@ class RecordedData():
         d = dataList[2].split("####\n")
         self.HeadData = makeVectorData(d[0].split('\n'),False)
         self.HeadRotation = makeVectorData(d[1].split('\n'),False)
+
         d1 = dataList[1].split('####\n')
         self.testData = makeVectorData(d1[0].split("\n"),False)
         f.close()
@@ -1229,7 +1240,7 @@ class RecordedData():
 
 
     def makeOtherDataString(self,start=0,end=-1):
-        dataTxt = "other\n"+Vector3ArrayToString(self.HeadData,start,end) + "####\n"+Vector3ArrayToString(self.HeadRotation,start,end)
+        dataTxt = "other\n"+Vector3ArrayToString(self.testData,start,end) + "####\n"+Vector3ArrayToString(self.HeadRotation,start,end)
         return dataTxt
 
     def MatchMid(self,s,e,originLists,newLists):
@@ -1238,9 +1249,15 @@ class RecordedData():
         mid2 = FindMaxIndex(newLists)
         transX = (s + mid2) - mid1
 
+        if(transX > s):
+            transX = s
+        if(e - transX > len(originLists)-1):
+            transX = e - (len(originLists)-1)
+
         newS = newS - transX
         newE = newE - transX
-        print(transX,s,e,newS,newE)
+
+        print(transX,s,e,newS,newE,len(originLists))
 
         return newS,newE
 
@@ -1251,6 +1268,7 @@ class RecordedData():
         leftE = spl.FindEndPoint(self.LFootData.realPosData[1])
         print("end:", rightE*fixedDeltaTime,leftE * fixedDeltaTime)
         return min(rightS,leftS),max(rightE,leftE)
+
 
     def HeightTrajectorySynthesize(self,newYData,axes):
         s = max(self.findStartPoint2(self.RFootData.realPosData[1]) ,0)
@@ -1281,6 +1299,7 @@ class RecordedData():
 
         s, end = self.MatchMid(s, end, self.RFootData.blendPosData[1], newYData)
 
+        print("l:",len(self.RFootData.realPosData[1]),"e:",end)
         axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
         axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
 
@@ -1292,12 +1311,16 @@ class RecordedData():
         axes[0].plot(xA,self.LFootData.realPosData[1], color="b", label="add(L)")
 
     def writeToTxt1(self,path,start=0,end=-1):
+        if end > len(self.RFootData.blendPosData[0]) - 1:
+            end = len(self.RFootData.blendPosData[0]) - 1
         writeData(path + "RightFootController.txt",self.RFootData.to_txt(start,end))
         writeData(path + "LeftFootController.txt",self.LFootData.to_txt(start,end))
         writeData(path + "otherData.txt",self.makeOtherDataString(start, end))
         writeData(path + "timeData.txt",self.makeTimeString(start,end))
 
     def writeToTxt(self,path,start=0,end=-1):
+        if end > len(self.RFootData.blendPosData[0])-1:
+            end = len(self.RFootData.blendPosData[0])-1
         writeData(path + "Rfootdata.txt",Vector3ArrayToString(self.RFootData.blendPosData,start,end))
         writeData(path + "Lfootdata.txt", Vector3ArrayToString(self.LFootData.blendPosData,start,end))
         writeData(path + "RfootRotationData.txt", Vector3ArrayToString(self.RFootData.realRotData,start,end))
@@ -1320,13 +1343,12 @@ class RecordedData():
             else:
                 m = avgInfo.loc[avgInfo['index'] == i]["velY"].mean()
             meanData.append(m)
-        #print(len(meanData),meanData)
-        #axes[0].plot(xAxis,np.array(self.testData[1][startIndex:endIndex]))
+
         axes[0].plot(xAxis, np.array(self.HeadData[1][startIndex:endIndex]) -startHeight, color=color,label="head" + additionalLabel)
         axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex] - np.array(self.testVelData[startIndex:endIndex]),label="head speed"+ additionalLabel)
         axes[1].plot(xAxis,np.array(meanData),label = "test")
         print(dtw(meanData,self.HeadVelData[startIndex:endIndex]))
-        #axes[1].plot(xAxis, np.array(self.testVelData[startIndex:endIndex]))
+
 
         axes[0].grid(True)
         axes[1].grid(True)
@@ -1354,6 +1376,8 @@ class RecordedData():
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
         axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
+        axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
+                     label="test" + additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
         axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
         axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
@@ -1735,171 +1759,6 @@ fIndex = 20
 #ShowReal_short(s,f,'timeCompare/plane',"C1","C2")
 #f, axes = plt.subplots(2, 1)
 g = plt
-
-def DrawTrackingDataSet_forVirtual(folderName,color1="C0",color2 = "C1",label = None):
-    timeCompareFolder = 'foot_dataset/virtualCompare/'
-    avgTime = 0
-    avgMaxFootHeight = 0
-    avgMaxFootVerticalVelocity = 0
-    avgFootVerticalVelocity = 0
-    avgMaxFootSpeed = 0
-    avgMaxHeadVerticalVelocity = 0
-    avgHeadVerticalVelocity = 0
-    avgValidMovement = 0
-    avgFootSpeed = 0
-    avgVerticalMovement = 0
-    avgVerticalSpeed = 0
-
-    for i in range(sIndex,fIndex):
-        folder_real = timeCompareFolder + folderName + "/"+ str(i)
-        RFootData = TrackingData(folder_real + "/Rfootdata.txt")
-        LFootData = TrackingData(folder_real + "/Lfootdata.txt")
-        WaistData = TrackingData(folder_real + "/HeadData.txt")
-        RFootData.DrawPosGraph(g,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label=label)
-        WaistData.DrawPosGraph(g,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label =label)
-        #HeadData.DrawPosGraph(g,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label =label)
-
-        avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * 0.01
-        avgMaxFootHeight += max(RFootData.posData[1])
-        avgFootVerticalVelocity += RFootData.GetAscentVelocity()
-        avgMaxFootVerticalVelocity += max(RFootData.velData[1])
-        avgMaxFootSpeed += max(RFootData.speed)
-        avgHeadVerticalVelocity += WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
-        avgMaxHeadVerticalVelocity += max(WaistData.velData[1])
-        avgValidMovement += RFootData.validMovement
-        avgFootSpeed += RFootData.validMovement /  ((RFootData.validEndIndex - RFootData.validStartIndex) * 0.01)
-        avgVerticalMovement += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex])
-        avgVerticalSpeed += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex]) / ((RFootData.validEndIndex - RFootData.validStartIndex) * 0.001)
-
-    avgTime /= fIndex
-    avgMaxFootHeight /= fIndex
-    avgFootVerticalVelocity /= fIndex
-    avgMaxFootVerticalVelocity /= fIndex
-    avgMaxFootSpeed /= fIndex
-    avgHeadVerticalVelocity /= fIndex
-    avgMaxHeadVerticalVelocity /= fIndex
-    avgFootSpeed  /= fIndex
-    avgValidMovement /= fIndex
-    avgVerticalMovement /= fIndex
-    avgVerticalSpeed /= fIndex
-
-    print("{0}: \n"
-          " 체공 시간 : {1}\n"
-          " 발의 최대 높이 : {2} \n"
-          " 발의 상승 속력 : {3}\n"
-          " 발의 최대 수직 속력 : {4} \n"
-          " 발의 최대 속력 : {5} \n"
-          " 머리 상승 속력 : {6} \n"
-          " 머리 최대 수직 속력 : {7} \n"
-          " 이동 거리 : {8} \n"
-          " 이동 속력 : {9} \n"
-          " 최종 이동 수직 거리 : {10}\n"
-          " 최종 이동 수직 속력 : {11}".format(folderName,avgTime,avgMaxFootHeight,avgFootVerticalVelocity,avgMaxFootVerticalVelocity,avgMaxFootSpeed,
-                                   avgHeadVerticalVelocity,avgMaxHeadVerticalVelocity,avgValidMovement,avgFootSpeed,avgVerticalMovement,avgVerticalSpeed))
-    #print(folderName ,":\n" ,avgTime,max(RFootData.velData[1]),max(RFootData.speed),max(WaistData.velData[1]),RFootData.validMovement)
-
-       # RFootData.DrawVelGraph(axes[1],color=color1)
-def DrawTrackingDataSet(folderName,sIndex,fIndex, color1="C0", color2="C1", label=None):
-        #timeCompareFolder = 'foot_dataset/timeCompare/'
-        avgTime = 0
-        avgMaxFootHeight = 0
-        avgMaxFootVerticalVelocity = 0
-        avgFootVerticalVelocity = 0
-        avgMaxFootSpeed = 0
-        avgMaxHeadVerticalVelocity = 0
-        avgHeadVerticalVelocity = 0
-        avgValidMovement = 0
-        avgFootSpeed = 0
-        avgVerticalMovement = 0
-        avgVerticalSpeed = 0
-        avgFootDescentSpeed =0
-
-        for i in range(0, fIndex):
-            folder_real = folderName + "/" + str(i)
-            RFootData = TrackingData(folder_real + "/Rfootdata.txt")
-            LFootData = TrackingData(folder_real + "/Lfootdata.txt")
-            WaistData = TrackingData(folder_real + "/WaistData.txt")
-            HeadData = TrackingData(folder_real + "/HeadData.txt")
-            RFootData.DrawPosGraph(g, RFootData.validStartIndex, color=color1)
-            RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color="b", label=label)
-            RFootData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.maxYIndex, color="r", label=label)
-
-            #WaistData.DrawPosGraph(g, RFootData.validStartIndex , WaistData.maxYIndex,color="C5")
-            if i == 1:
-                RFootData.DrawPosGraph(g, color=color1, label="RFoot")
-                LFootData.DrawPosGraph(g, color=color2, label="LFoot")
-
-
-            #LFootData.DrawPosGraph(g, color=color2)
-            #LFootData.DrawPosGraph(g, RFootData.validStartIndex, LFootData.length-1, color=color2, label=label)
-            #WaistData.DrawPosGraph(g,color=color1)
-            #WaistData.DrawPosGraph(g, RFootData.validStartIndex, WaistData.maxYIndex, color=color1, label=label)
-
-            #HeadData.DrawPosGraph(g, RFootData.validStartIndex, RFootData.validEndIndex, color=color1, label=label)
-            deltaTime = fixedDeltaTime
-            print((RFootData.validEndIndex, RFootData.validStartIndex))
-            avgTime += (RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime
-            avgMaxFootHeight += max(RFootData.posData[1])
-            avgFootVerticalVelocity += RFootData.GetGetAscentVelocity2(RFootData.validStartIndex)
-            avgFootDescentSpeed += RFootData.GetDescentVelocity()
-            avgMaxFootVerticalVelocity += max(RFootData.velData[1])
-            avgMaxFootSpeed += max(RFootData.speed)
-            avgHeadVerticalVelocity += WaistData.GetAscentHeadVelocity(RFootData.validStartIndex, RFootData.maxYIndex)#WaistData.GetGetAscentVelocity2(RFootData.validStartIndex)
-            avgMaxHeadVerticalVelocity += max(WaistData.velData[1])
-            avgValidMovement += RFootData.validMovement
-            avgFootSpeed += RFootData.validMovement / ((RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime)
-            avgVerticalMovement += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][RFootData.validStartIndex])
-            avgVerticalSpeed += (RFootData.posData[1][RFootData.validEndIndex] - RFootData.posData[1][
-                RFootData.validStartIndex]) / ((RFootData.validEndIndex - RFootData.validStartIndex) * deltaTime)
-
-        avgTime /= fIndex
-        avgMaxFootHeight /= fIndex
-        avgFootVerticalVelocity /= fIndex
-        avgFootDescentSpeed /= fIndex
-        avgMaxFootVerticalVelocity /= fIndex
-        avgMaxFootSpeed /= fIndex
-        avgHeadVerticalVelocity /= fIndex
-        avgMaxHeadVerticalVelocity /= fIndex
-        avgFootSpeed /= fIndex
-        avgValidMovement /= fIndex
-        avgVerticalMovement /= fIndex
-        avgVerticalSpeed /= fIndex
-
-        print("{0}: \n"
-              " 체공 시간 : {1}\n"
-              " 발의 최대 높이 : {2} \n"
-              " 발의 상승 속력 : {3}\n"
-              " 발의 최대 수직 속력 : {4} \n"
-              " 발의 최대 속력 : {5} \n"
-              " 머리 상승 속력 : {6} \n"
-              " 머리 최대 수직 속력 : {7} \n"
-              " 이동 거리 : {8} \n"
-              " 이동 속력 : {9} \n"
-              " 최종 이동 수직 거리 : {10}\n"
-              " 최종 이동 수직 속력 : {11}\n"
-              " 발 하강 속력 : {12}".format(folderName, avgTime, avgMaxFootHeight, avgFootVerticalVelocity,
-                                           avgMaxFootVerticalVelocity, avgMaxFootSpeed,
-                                           avgHeadVerticalVelocity, avgMaxHeadVerticalVelocity, avgValidMovement,
-                                           avgFootSpeed, avgVerticalMovement, avgVerticalSpeed,avgFootDescentSpeed))
-
-        #WaistData.DrawVelGraph(axes[1],color=color2)
-def DrawTrackingDataSet2(folderName):
-    timeCompareFolder = 'foot_dataset/timeCompare/'
-    ascendingFoot = []
-    ascendingHead = []
-    for i in range(sIndex,fIndex):
-        folder_real = timeCompareFolder + folderName + "/"+ str(i)
-        RFootData = TrackingData(folder_real + "/RFootdata.txt")
-        LFootData = TrackingData(folder_real + "/LFootdata.txt")
-        WaistData =  TrackingData(folder_real + "/WaistData.txt")
-        #RFootData.DrawPosGraph(plt,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label=label)
-        #WaistData.DrawPosGraph(plt,RFootData.validStartIndex,RFootData.validEndIndex,color=color1,label =label)
-        ascendingFoot.append(max(RFootData.speed))
-        ascendingHead.append(WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
-        #print(RFootData.GetAscentVelocity(), WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
-    plt.scatter(ascendingFoot,ascendingHead)
-        #print(RFootData.GetAscentVelocity(),WaistData.GetGetAscentVelocity2(RFootData.validStartIndex))
-
 
 def GetHeadDataFrame(condition):
     f  = os.getcwd().replace("\\","/",10)
