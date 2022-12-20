@@ -85,7 +85,7 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
                     curCool = NextCoolTime
                     pointList.append(i)
             else:
-                if (abs(v) < Th  and abs(aData[i]) < aTh):
+                if (abs(v) < Th  and abs(aData[i]) < aTh ):
                     isStartPoint = not isStartPoint
                     curCool = NextCoolTime
                     pointList.append(i)
@@ -103,7 +103,7 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
             resultList.append((start, end))
         else:
             if isValidStep(posData[start:end], validTh):
-                sIndex = start + FindStartPoint(posData[start:end])
+                sIndex = max(start + FindStartPoint(posData[start:end])-10,0)
                 resultList.append((sIndex, end))
 
     if isDebug:

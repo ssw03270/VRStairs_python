@@ -1132,6 +1132,7 @@ class RecordedData():
         self.RFootData = None
         self.LFootData = None
         self.firstZero = firstZero
+
         if(format == 1):
             self.init_1(folderName)
         elif(format == 2):
@@ -1152,8 +1153,8 @@ class RecordedData():
         rfoot = []
         lfoot = []
         for i in range(3):
-            #rfoot.append(savgol_filter(self.RFootData.blendPosData[i], filterSize, 6))
-            #lfoot.append(savgol_filter(self.LFootData.blendPosData[i], filterSize, 6))
+            # rfoot.append(savgol_filter(self.RFootData.blendPosData[i], filterSize, 6))
+            # lfoot.append(savgol_filter(self.LFootData.blendPosData[i], filterSize, 6))
             rfoot.append(self.RFootData.blendPosData[i])
             lfoot.append(self.LFootData.blendPosData[i])
 
@@ -1269,13 +1270,52 @@ class RecordedData():
         print("end:", rightE*fixedDeltaTime,leftE * fixedDeltaTime)
         return min(rightS,leftS),max(rightE,leftE)
 
+    def HeightTrajectorySynthesizeByOrder(self,r0,r1,l0,axes):
+        s = max(self.findStartPoint2(self.RFootData.realPosData[1]) ,0)
+        end = min(s + len(r0)-1,len(self.RFootData.realPosData[0])-1)
+        axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
+        axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
+
+        s,end = self.MatchMid(s,end,self.RFootData.realPosData[1],r0)
+
+        for i in range(s,end):
+            self.RFootData.realPosData[1][i] = self.RFootData.realPosData[1][s] + r0[i-s]
+        self.RFootData.realPosData[1][end:] = [self.RFootData.realPosData[1][s] + r0[i-s]] * len(self.RFootData.realPosData[1][end:])
+
+        s = self.findStartPoint2(self.LFootData.realPosData[1])
+        end = min(s + len(l0)-1,len(self.LFootData.realPosData[0])-1)
+
+        axes[0].scatter(s * fixedDeltaTime, self.LFootData.realPosData[1][s])
+        axes[0].scatter(end * fixedDeltaTime, self.LFootData.realPosData[1][end])
+
+        s,end = self.MatchMid(s,end,self.LFootData.realPosData[1],l0)
+
+        for i in range(s,end):
+            self.LFootData.realPosData[1][i] = self.LFootData.realPosData[1][s] + l0[i-s]
+        self.LFootData.realPosData[1][end:] = [self.LFootData.realPosData[1][s] + l0[i - s]] * len(self.LFootData.realPosData[1][end:])
+
+        s = s + 50 + self.findStartPoint2(self.RFootData.blendPosData[1][s+50:])
+        end = min(s + len(r1)-1,len(self.RFootData.realPosData[0])-1)
+
+        s, end = self.MatchMid(s, end, self.RFootData.blendPosData[1], r1)
+
+        print("l:",len(self.RFootData.realPosData[1]),"e:",end)
+        axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
+        axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
+
+        for i in range(s,end):
+            self.RFootData.realPosData[1][i] = self.RFootData.realPosData[1][s] + r1[i-s]
+        xA = np.array(list(range(0, len(self.RFootData.realPosData[1]) ))) * fixedDeltaTime
+
+        axes[0].plot(xA,self.RFootData.realPosData[1], color="r", label="add(R)")
+        axes[0].plot(xA,self.LFootData.realPosData[1], color="b", label="add(L)")
 
     def HeightTrajectorySynthesize(self,newYData,axes):
         s = max(self.findStartPoint2(self.RFootData.realPosData[1]) ,0)
         end = min(s + len(newYData)-1,len(self.RFootData.realPosData[0])-1)
         axes[0].scatter(s * fixedDeltaTime, self.RFootData.realPosData[1][s])
         axes[0].scatter(end * fixedDeltaTime, self.RFootData.realPosData[1][end])
-
+        print("len(newYdata):",len(newYData))
         s,end = self.MatchMid(s,end,self.RFootData.realPosData[1],newYData)
 
         for i in range(s,end):
@@ -1326,6 +1366,8 @@ class RecordedData():
         writeData(path + "RfootRotationData.txt", Vector3ArrayToString(self.RFootData.realRotData,start,end))
         writeData(path + "LfootRotationData.txt", Vector3ArrayToString(self.LFootData.realRotData,start,end))
         writeData(path + "WaistData.txt", Vector3ArrayToString(self.HeadData,start,end))
+        writeData(path + "WaistRotationData.txt", Vector3ArrayToString(self.HeadRotation, start, end))
+        writeData(path + "timeData.txt", self.makeTimeString(start, end))
 
 
     def DrawHeadGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,avgInfo = None,addtionalHeight = 0,transX = 0):
@@ -1376,19 +1418,19 @@ class RecordedData():
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
         axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
-        axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
-                     label="test" + additionalLabel)
+        # axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
+        #              label="test" + additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
         axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
         axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
 
         if self.Format == 1:
-            #axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
-            #axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
-            axes[0].plot(xAxis, self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
-                         label="Lfoot(real)" + additionalLabel)
-            axes[0].plot(xAxis, self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
-                         label="Rfoot(real)" + additionalLabel)
+            axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
+            axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
+            # axes[0].plot(xAxis, self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
+            #              label="Lfoot(real)" + additionalLabel)
+            # axes[0].plot(xAxis, self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
+            #              label="Rfoot(real)" + additionalLabel)
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)

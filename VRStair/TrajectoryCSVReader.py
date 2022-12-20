@@ -37,12 +37,12 @@ MethodPerColor = {"Ours":"r","Seo": "g", "Nagao":"b"}
 bpmList = [50,75,100]
 heightList = [0.125,0.15,0.175,0.2,0.225,0.25]
 methodList = ["Ours","Seo","Nagao"]
-pNameList = ["강경은","이철우","이로운","김봉규","하창범"]
 
+global forStepCount
 
 class Trajectory:
     StepId = 0
-    def __init__(self,folderName : str):
+    def __init__(self,folderName : str,type="old"):
         self.folder = folderName
         self.stairHeight : float = 0
         self.bpm :int = 0
@@ -53,7 +53,7 @@ class Trajectory:
         #self.head =  pd.DataFrame()
         self.rSplitPoints = []
         self.lSplitPoints = []
-        self.init()
+        self.init(type)
         self.Split()
 
     def init(self):
@@ -62,13 +62,13 @@ class Trajectory:
 
     def MakeDataFrame(self):
         if len(self.rSplitPoints) > 0 and len(self.lSplitPoints) > 0 :
-            rData : pandas.DataFrame = self.makeStepDataFrame(self.rSplitPoints,self.rFoot)
-            lData : pandas.DataFrame = self.makeStepDataFrame(self.lSplitPoints, self.lFoot)
+            rData : pandas.DataFrame = self.makeStepDataFrame(self.rSplitPoints,self.rFoot,"r")
+            lData : pandas.DataFrame = self.makeStepDataFrame(self.lSplitPoints, self.lFoot,"l")
             return rData,lData
         else:
             return None,None
 
-    def getNewDataFrame(self,df,s,e):
+    def getNewDataFrame(self,df,s,e,order,rl :str):
         newDf = df.loc[s:e].copy()
         newDf['bpm'] = self.bpm
         newDf['name'] = self.name
@@ -76,16 +76,19 @@ class Trajectory:
         newDf['stairHeight'] = self.stairHeight
         newDf['StepId'] = Trajectory.StepId
         newDf['index'] = list(range(0,e-s+1))
+        newDf['order'] = rl + str(order)
         Trajectory.StepId += 1
 
         print(Trajectory.StepId)
 
         return newDf.copy()
 
-    def makeStepDataFrame(self,splitPoints : list, df : pandas.DataFrame):
-        totalDF = self.getNewDataFrame(df,splitPoints[0][0],splitPoints[0][1])
-        for s,e in splitPoints[1:]:
-            newdf = self.getNewDataFrame(df,s,e)
+    def makeStepDataFrame(self,splitPoints : list, df : pandas.DataFrame,rl : str):
+        totalDF = pd.DataFrame()
+        index = 0
+        for s,e in splitPoints[0:]:
+            newdf = self.getNewDataFrame(df,s,e,index,rl)
+            index += 1
             totalDF = pd.concat([totalDF,newdf.copy()])
 
         return totalDF
@@ -126,46 +129,57 @@ class Trajectory:
         d = np.array(self.rFoot["posY"])
         startH = FindGroundHeight(d,MakeVelData(d)) #d[self.findStartPoint(MakeVelData(d))]
         self.rFoot["posY"] = savgol_filter(d - startH, filterSize, 6)
-        self.rSplitPoints = self.splitTrajectory(np.array(self.rFoot["posY"]))
+        self.rSplitPoints = self.splitTrajectory(np.array([self.rFoot["posX"],self.rFoot["posY"],self.rFoot["posZ"]]))
 
         d = np.array(self.lFoot["posY"])
         startH = FindGroundHeight(d, MakeVelData(d)) # d[self.findStartPoint(MakeVelData(d))]
         self.lFoot["posY"] = savgol_filter(d - startH, filterSize, 6)
-        self.lSplitPoints = self.splitTrajectory(np.array(self.lFoot["posY"]))
+        self.lSplitPoints = self.splitTrajectory(np.array([self.lFoot["posX"],self.lFoot["posY"],self.lFoot["posZ"]]))
 
     def splitTrajectory(self,posData,isDebug = False):
         #posData = savgol_filter(posData, filterSize, 6)
-        velData = MakeVelData(posData)
+        velData = MakeVelData(posData[1])
         aData = MakeVelData(velData,True)
-        pList = self.GetPointList(posData,velData)
+        self.isDebug = isDebug;
+        pList = self.GetPointList(posData,velData).copy()
+        # if self.stairHeight == 0.25 and self.bpm == 50 and self.name == "임수빈":
+        #     isDebug = True
 
-        if self.stairHeight == 0.25 and self.bpm == 50 and self.name == "임수빈":
-            isDebug = True
 
-        if isDebug:
+        if self.isDebug:
             f, axes = plt.subplots(3, 1)
-            axes[0].plot(posData, color=MethodPerColor[self.method], label=self.method)
-            axes[1].plot(velData, color=MethodPerColor[self.method], label=self.method)
-            axes[2].plot(aData, color=MethodPerColor[self.method], label=self.method)
+            axes[0].plot(posData[1], color=MethodPerColor[self.method], label=self.method)
+            axes[1].plot(posData[0], color=MethodPerColor[self.method], label=self.method)
+            axes[2].plot(posData[2], color=MethodPerColor[self.method], label=self.method)
+            #axes[2].plot(aData, color=MethodPerColor[self.method], label=self.method)
             for p,e in pList:
-                axes[0].scatter(p, posData[p])
-                axes[0].scatter(e, posData[e])
-                axes[1].scatter(p, velData[p])
-                axes[1].scatter(e, velData[e])
+                axes[0].scatter(p, posData[1][p])
+                axes[0].scatter(e, posData[1][e])
+                axes[1].scatter(p, posData[0][p])
+                axes[1].scatter(e, posData[0][e])
+                axes[2].scatter(p, posData[2][p])
+                axes[2].scatter(e, posData[2][e])
+                # axes[1].scatter(p, velData[p])
+                # axes[1].scatter(e, velData[e])
             plt.show()
         return pList
 
     def isValidStep(self,data,Th):
-        if len(data) > 140:
-            print("cut:",len(data))
+        if len(data[1]) > 140:
+            print("cut:",len(data[1]))
             return False
-        elif len(data) < 60:
+        elif len(data[1]) < 60:
             return False
-        if max(data) - min(data) < Th:
+        if max(data[1]) - min(data[1]) < Th:
             return False
-        if data[0] - data[-1] > Th * 0.5:
+        if abs(data[0][0] - data[0][-1]) < 0.5:
+            return False
+        if abs(data[2][0] - data[2][-1]) > 0.3:
+            return False
+        if data[1][0] - data[1][-1] > Th * 0.5:
             return False
         else:
+            print(abs(data[0][0] - data[0][-1]) )
             return True
 
     def GetPointList(self,posData,velData):
@@ -176,20 +190,25 @@ class Trajectory:
         curCool = 0
         pointList = []
         maxV = 0
+        posYData = posData[1]
         for v in velData:
             if curCool < 0:
-                if (abs(abs(v) - Th) < 0.02 and abs(aData[i]) < 2 and posData[i] < 0.1):
+                if (abs(abs(v) - Th) < 0.02 and abs(aData[i]) < 2 and posYData[i] < 0.1):
                     curCool = NextCoolTime
                     pointList.append(i)
             else:
                 curCool -= 1
             i += 1
         resultList = []
-        validTh = max(posData) * 0.6
+        validTh = max(posYData) * 0.6
+
+        if(len(pointList) % 2 != 0):
+            pointList.append(len(posYData)-1)
+
         for j in range(len(pointList)-1):
             start = pointList[j]; end = pointList[j+1]
-            start += FindStartPoint(posData[start:end])#self.findStartPointByPos(posData[start:end])
-            if self.isValidStep(posData[start:end],validTh):
+            start += FindStartPoint(posYData[start:end])#self.findStartPointByPos(posData[start:end])
+            if self.isValidStep(posData[:,start:end],validTh):
                 resultList.append((start,end))
 
         return resultList
@@ -249,25 +268,29 @@ class Ex2TrajectorySet:
     def __init__(self,trajectoryFolder):
         self.case = dict()
         self.folders = self.GetTrajectoryFolders(trajectoryFolder)
+
         Trajectory.StepId = 0
         isFirst = True
         rDf = pd.DataFrame()
         lDf = pd.DataFrame()
+        global forStepCount
+        forStepCount = 0
         for f in self.folders:
             for i in range(0,17):
                 t = Ex2Trajectory(f + "c"+str(i) + "/")
-                curKey = (t.stairHeight,t.bpm,t.method)
                 r,l = t.MakeDataFrame()
                 if r is not None and l is not None :
                     rDf = pd.concat([rDf,r])
                     lDf = pd.concat([lDf,l])
-                if(curKey in self.case.keys()):
-                    self.case[curKey].append(t)
-                else:
-                    self.case[curKey] = [t]
+                    print(t.name,":",len(rDf["StepId"].unique()) + len(lDf["StepId"].unique()))
+
+
+        print("forStepCount", len(rDf["StepId"].unique()) + len(lDf["StepId"].unique()))
         rDf.to_csv("R_test.csv",encoding='utf-8-sig')
         lDf.to_csv("L_test.csv",encoding='utf-8-sig')
 
+    def GetPointList(self,posData,velData):
+        return FindPoints(posData[1])
 
     def GetTrajectoryFolders(self,trajectoryFolder):
         trajectoryFolderList = []
@@ -288,6 +311,7 @@ class Ex2TrajectorySet:
                                 mCount = l
                                 if l == 18:
                                     trajectoryFolderList.append(realFolder)
+                                    #print(realFolder)
                                     break
             print(trajectoryFolderList)
             return trajectoryFolderList
@@ -311,21 +335,25 @@ class Ex2TrajectorySet:
 - 저장되어 있는 폴더 구조 : "ex3/method/사용자이름/계단높이_bpm/n" - 저장 되어 있음.
 '''
 class Trajectory_RD(Trajectory):
-    def __init__(self,folderName):
-        super().__init__(folderName)
+    def __init__(self,folderName, type = "old"):
+        super().__init__(folderName,type)
 
-    def init(self):
+    def init(self,type):
         self.infoDict = {}
         self.makeInfo()
         self.bpm = self.getBpm()
         self.stairHeight = self.getHeight()
         self.method = self.getMethod()
         self.name = self.getName()
-        self.rFoot = g.RecordedFootData(self.folder + "RightFootController.txt").to_dataframe()
-        self.lFoot =  g.RecordedFootData(self.folder + "LeftFootController.txt").to_dataframe()
+        if type == "old":
+            self.rFoot = g.RecordedFootData(self.folder + "RightFootController.txt").to_dataframe()
+            self.lFoot =  g.RecordedFootData(self.folder + "LeftFootController.txt").to_dataframe()
+        if type == "new":
+            self.rFoot = pd.read_csv(self.folder + "RightFootController.csv", encoding='utf-8')
+            self.lFoot = pd.read_csv(self.folder + "LeftFootController.csv", encoding='utf-8')
 
     def GetPointList(self,posData,velData):
-        return FindPoints(posData)
+        return FindPoints(posData[1])
 
     def makeInfo(self):
         key = ["ex","method","name","height","bpm"]
@@ -353,7 +381,11 @@ def MakeMeanTrajectoryByRecordedData(folderName):
     rDf = pd.DataFrame()
     lDf = pd.DataFrame()
     for f in fList:
-        t = Trajectory_RD(f)
+
+        if ("임수빈" in f ) or ("서승원" in f) or ("김미송" in f):
+            t = Trajectory_RD(f)
+        else:
+            t = Trajectory_RD(f,"new")
         r, l = t.MakeDataFrame()
         if r is not None and l is not None:
             rDf = pd.concat([rDf, r])
@@ -361,8 +393,6 @@ def MakeMeanTrajectoryByRecordedData(folderName):
     rDf.to_csv("R_test.csv",encoding='utf-8-sig')
     lDf.to_csv("L_test.csv",encoding='utf-8-sig')
     return
-
-
 
 
 rData = pd.read_csv("R_test.csv",encoding='utf-8-sig')
@@ -374,20 +404,44 @@ def MakeMeanHeightTrajectory(data,bpm,stairHeight,method):
     df['y'] = data
     df['bpm'] = bpm
     df['method'] = method
-    df['stairHeight']=stairHeight
+    df['stairHeight'] = stairHeight
+
+    return df
+
+def MakeMeanHeightTrajectory_order(data,bpm,stairHeight,method,order):
+    df = pd.DataFrame()
+    df['y'] = data
+    df['bpm'] = bpm
+    df['method'] = method
+    df['stairHeight'] = stairHeight
+    df['order'] = order
+
     return df
 
 
 def DrawPerParameter(height,method,bpm,person,axes):
     rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) &  (rData["name"] == person)]
     lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) &  (lData["name"] == person)]
-    stepList1 = rDf["StepId"].unique()
-    stepList2 = lDf["StepId"].unique()
-    #print(stepList1)
-    for s in stepList1:
-        data = rDf[rDf["StepId"] == s]
-        d = np.array(data["posY"])
-        axes.plot(list(np.arange(0, len(data["posY"]))), d ,color = MethodPerColor[method])
+    data = pd.concat([rDf,lDf],ignore_index=True)
+    sList = data["StepId"].unique()
+    for s in sList:
+        dd = data[data["StepId"] == s]
+        d = np.array(dd["posY"])
+        axes.plot(list(np.arange(0, len(dd["posY"]))), d ,color = MethodPerColor[method])
+
+    return len(sList)
+
+def DrawPerParameterByOrder(height, method, bpm, person,order, axes):
+    rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) & (rData["name"] == person) & (rData["order"] == order)]
+    lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) & (lData["name"] == person) & (lData["order"] == order)]
+    data = pd.concat([rDf, lDf], ignore_index=True)
+    sList = data["StepId"].unique()
+    for s in sList:
+        dd = data[data["StepId"] == s]
+        d = np.array(dd["posY"])
+        axes.plot(list(np.arange(0, len(dd["posY"]))), d, color=MethodPerColor[method])
+
+    return len(sList)
 
     # for s in stepList2:
     #     data = lDf[lDf["StepId"] == s]
@@ -427,24 +481,36 @@ def DrawPerParameterXYZMean(height,method,bpm,axes,i):
     axes[1][i].plot(list(np.arange(0, len(data["posY"]))),data["posY"], color = MethodPerColor[method])
     axes[2][i].plot(list(np.arange(0, len(data["posZ"]))),data["posZ"], color = MethodPerColor[method])
 
-def DrawPerParameterMean(height, method, bpm, axes):
-    rDf = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) ]
-    lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) ]
-    cutLength = {50: 100, 75 : 75, 100 : 60}
-    data = lDf.groupby("index").mean() #pd.concat([rDf,lDf],ignore_index=True).groupby('index').mean()
-    d= np.array(data["posY"])
 
+def DrawPerParameterMean(height, method, bpm, axes):
+    rDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm)]
+    lDf = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm)]
+    cutLength = {50: 100, 75 : 75, 100 : 60}
+    data = pd.concat([rDf,lDf],ignore_index=True).groupby('index').mean()
+    d= np.array(data["posY"])
     for i in range(len(d)):
         if d[i] - d[0] < 0 or i > cutLength[bpm]:
             d[i] = d[0]
     d = savgol_filter(d - d[0], filterSize, 6)
     axes.plot(list(np.arange(0, len(data["posY"]))), d , color=MethodPerColor[method])
     return MakeMeanHeightTrajectory(d,bpm,height,method)
-    #print(height,bpm,method,max(data["posY"]))
-    # data = lDf.groupby('index').mean( )
-    # d = np.array(data["posY"])
-    # axes.plot(list(np.arange(0, len(data["posY"]))), d - d[0], color=MethodPerColor[method])
 
+
+def DrawPerParameterMean_order(height, method, bpm, order,axes):
+    cutLength = {50: 100, 75 : 75, 100 : 65}
+    if "r" in order:
+        data = rData[(rData["stairHeight"] == height) & (rData["method"] == method) & (rData["bpm"] == bpm) & (rData["order"] == order)]
+    else:
+        data = lData[(lData["stairHeight"] == height) & (lData["method"] == method) & (lData["bpm"] == bpm) & (lData["order"] == order)]
+
+    data = data.groupby('index').mean()
+    d = np.array(data["posY"])
+    for i in range(len(d)):
+        if d[i] - d[0] < 0 or i > cutLength[bpm]:
+            d[i] = d[0]
+    d = savgol_filter(d - d[0], filterSize, 6)
+    axes.plot(list(np.arange(0,len(d))), d , color=MethodPerColor[method])
+    return MakeMeanHeightTrajectory_order(d,bpm,height,method,order)
 
 
 def DrawStairHeightAndMethod(height,method,bpm,axes):
@@ -492,6 +558,28 @@ def SaveTrajectoryPng():
     plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
     plt.gcf().set_size_inches(10, 5)
     plt.savefig('test.png',dpi=200)
+    plt.show()
+
+def SaveTrajectoryPngPerPerSonByOrder(pName):
+    f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
+    hList = [0.125,0.25]
+    for h in range(len(hList)):
+        print(h)
+        for m in methodList:
+            for i in range(0,3):
+                for k,o in enumerate(["r0","r1","l0"]):
+                    axes[0][3*h + k].set_title(str.format("h : {0},order: {1}", hList[h],o))
+                    DrawPerParameterByOrder(hList[h], m, bpmList[i],pName,o,axes[i][3*h + k])
+                    axes[i][3*h + k].set_xlim(0, 140)
+                    axes[i][3*h + k].set_ylim(-0.1, 0.8)
+                    axes[i][3*h + k].grid(True)
+
+    axes[0][0].set_ylabel("bpm : 50")
+    axes[1][0].set_ylabel("bpm : 75")
+    axes[2][0].set_ylabel("bpm : 100")
+    plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
+    plt.gcf().set_size_inches(10, 5)
+    plt.savefig(pName+'.png',dpi=200)
     plt.show()
 
 def SaveTrajectoryPngPerPerSon(pName):
@@ -552,22 +640,21 @@ def SaveTrajectoryPngXYZMean():
     plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
     plt.show()
 
-
 def SaveTrajectory1():
     f, axes = plt.subplots(3, 6,sharex=True,sharey=True)
     df = pandas.DataFrame()
-
     hList = [0.125,0.25]
     for h in range(len(hList)):
-        axes[0][h].set_title(str.format("h : {0}", hList[h]))
         print(h)
         for m in methodList:
             for i in range(0,3):
+                axes[0][h].set_title(str.format("h : {0}", hList[h]))
                 newdf = DrawPerParameterMean(hList[h], m, bpmList[i],axes[i][h])
                 df = pd.concat([df,newdf])
                 axes[i][h].set_xlim(0, 140)
                 axes[i][h].set_ylim(-0.1, 0.8)
                 axes[i][h].grid(True)
+
     df.to_csv("test.csv")
     axes[0][0].set_ylabel("bpm : 50")
     axes[1][0].set_ylabel("bpm : 75")
@@ -577,15 +664,54 @@ def SaveTrajectory1():
     plt.savefig('test.png',dpi=200)
     plt.show()
 
-#MakeMeanTrajectoryByRecordedData(ex3Folder)
 
-#SaveTrajectory1()
+def SaveTrajectory_order():
+    f, axes = plt.subplots(3, 7,sharex=True,sharey=True)
+    df = pandas.DataFrame()
+    hList = [0.125,0.25]
+    for h in range(len(hList)):
+        print(h)
+        for m in methodList:
+            for i in range(0,3):
+                for k,o in enumerate(['r0','r1','l0']):
+                    axes[0][h*3+k].set_title(str.format("h : {0},order : {1}", hList[h],o))
+                    newdf = DrawPerParameterMean_order(hList[h], m, bpmList[i],o,axes[i][h*3+k])
+                    df = pd.concat([df,newdf])
+                    axes[i][h*3+k].set_xlim(0, 140)
+                    axes[i][h*3+k].set_ylim(-0.1, 0.8)
+                    axes[i][h*3+k].grid(True)
 
-#sets = Ex2TrajectorySet(ex2Folder)
-#SaveTrajectoryPng()
+    df.to_csv("test_order.csv")
+    axes[0][0].set_ylabel("bpm : 50")
+    axes[1][0].set_ylabel("bpm : 75")
+    axes[2][0].set_ylabel("bpm : 100")
+    plt.subplots_adjust(left=0.06, bottom=0.1, right=0.95, top=0.9, wspace=0.2, hspace=0.15)
+    plt.gcf().set_size_inches(10, 5)
+    plt.savefig('test_order.png',dpi=200)
+    plt.show()
+
+
+def debugStep(dubugList):
+    data = pd.concat([rData, lData], ignore_index=True)
+    for s in dubugList:
+        dd = data[(data["StepId"] == s) & (data["index"] == 0)]
+        #print(dd["bpm"],dd["name"],dd["stairHeight"],dd["method"])
+
+
 #SaveTrajectoryPngXYZMean()
-# for PNAME in ["임수빈","김미송","서승원"]:
-#      SaveTrajectoryPngPerPerSon(PNAME)
+if __name__ == "__main__":
+    forStepCount = 0
+    MakeMeanTrajectoryByRecordedData(ex3Folder)
+    SaveTrajectory_order()
+    #sets = Ex2TrajectorySet(ex2Folder)
+    #SaveTrajectoryPng()
+    # debugList = list(range(0,2488))
+    # for PNAME in rData["name"].unique():
+    #     print(PNAME)
+    #     SaveTrajectoryPngPerPerSonByOrder(PNAME)
+    # print(forStepCount)
+    # #print(debugList)
+    #debugStep(debugList)
 # f,a = plt.subplots(2,1)
 # DrawPerParameter("0.125","Nagao",75,"강경은",a)
 # plt.show()
