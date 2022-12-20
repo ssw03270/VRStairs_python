@@ -239,6 +239,11 @@ def test():
         plt.show()
 
 
+
+
+
+
+
 #ConvertRecordedData(folder + "ex3/seo/서승원/")
 #lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")

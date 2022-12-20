@@ -32,6 +32,8 @@ def MakeVelData(posData,smoothON = False):
 잘못 잘린건지 검사하는 함수임.
 '''
 def isValidStep(data,Th):
+    if len(data) <= 30:
+        return False
     if max(data) - min(data) < Th:
         return False
     if data[0] - data[-1] > Th * 0.5:
@@ -40,14 +42,20 @@ def isValidStep(data,Th):
         return True
 
 def FindStartPoint(posData):
-    velData = MakeVelData(posData)
+    #velData = MakeVelData(posData)
     startIndex = 0
     for i in range(len(posData)-3):
-        if (velData[i] > 0.02 and velData[i+1] > 0.02 and velData[i+2] > 0.02):
+        if (posData[i]-posData[0] > 0.02 and posData[i+1]-posData[0] > 0.02 and posData[i+2]-posData[0] > 0.02):
             startIndex = i;
             break;
     return startIndex
 
+def FindEndPoint(posData):
+    velData = MakeVelData(posData)
+    for i in range(len(posData)-1,0,-1):
+        if abs(velData[i]) > 0.1:
+            return i
+    return len(posData)-1
 
 '''
 높이 궤적이 주어지면, 궤적이 올라가는 시작점과 끝 부분을 찾아줌.
@@ -60,7 +68,6 @@ input <- (posdata [] , Th : float, interval : int , NotRemove : bool , isDebug :
 output -> [(s1,e2),,,,(s_n,e_n)] 
 '''
 def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = False):
-    f,axes = plt.subplots(3,1)
     posData = savgol_filter(posData,51,6)
     velData = MakeVelData(posData)
     aData = MakeVelData(velData,True)
@@ -78,7 +85,7 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
                     curCool = NextCoolTime
                     pointList.append(i)
             else:
-                if (abs(v) < Th  and abs(aData[i]) < aTh):
+                if (abs(v) < Th  and abs(aData[i]) < aTh ):
                     isStartPoint = not isStartPoint
                     curCool = NextCoolTime
                     pointList.append(i)
@@ -96,11 +103,11 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
             resultList.append((start, end))
         else:
             if isValidStep(posData[start:end], validTh):
-                sIndex = start + FindStartPoint(posData[start:end])
+                sIndex = max(start + FindStartPoint(posData[start:end])-10,0)
                 resultList.append((sIndex, end))
 
     if isDebug:
-        print(resultList)
+        f, axes = plt.subplots(3, 1)
         axes[0].plot(posData)
         axes[1].plot(velData)
         axes[2].plot(aData)
@@ -115,5 +122,20 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
         plt.show()
 
     return resultList
+
+
+def FindGroundHeight(posData,velData = None):
+    if type(velData) is None:
+        velData = MakeVelData(posData)
+    sumGroundHeight = 0
+    count = 1
+    maxH = max(posData)
+    for i,v in enumerate(velData):
+        if abs(v) < 0.01 and posData[i] < maxH/2:
+            sumGroundHeight += posData[i]
+            count += 1
+
+    return (sumGroundHeight/count)
+
 
 
