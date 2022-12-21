@@ -1177,9 +1177,9 @@ class RecordedData():
         self.HeadData = loadData(folderName + "WaistData.txt")
         #self.HeadData = np.array(HeadData)
 
-        self.RFootData[1] = savgol_filter(self.RFootData[1], filterSize, 6)
-        self.LFootData[1] = savgol_filter(self.LFootData[1], filterSize, 6)
-        self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
+        # self.RFootData[1] = savgol_filter(self.RFootData[1], filterSize, 6)
+        # self.LFootData[1] = savgol_filter(self.LFootData[1], filterSize, 6)
+        # self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
         self.RVelData = [[0],[0],[0]]
         self.LVelData = [[0],[0],[0]]
         self.HeadVelData = [0]
@@ -1397,6 +1397,42 @@ class RecordedData():
         axes[0].legend(loc = "upper right")
         axes[1].legend(loc = "upper right")
 
+    def DrawPosGraph(self,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight =0,transX = 0):
+        rfoot = []
+        lfoot = []
+        if(self.Format == 1):
+            rfoot = self.RFootData.blendPosData
+            lfoot = self.LFootData.blendPosData
+
+        if(self.Format == 2 or self.Format == 3):
+            rfoot = self.RFootData
+            lfoot = self.LFootData
+
+        if(startIndex == None):
+            startIndex= 1
+        if(endIndex == None):
+            endIndex = -1
+        rfoot = np.array(rfoot)
+        lfoot = np.array(lfoot)
+
+
+        xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
+        plt.plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
+        # axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
+        #              label="test" + additionalLabel)
+        xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
+        plt.plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
+        plt.plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
+        #plt.vlines()
+        #axes[0].vlines(step.validStart * fixedDeltaTime, 0, 2, colors="black", linestyles="--")
+        if self.Format == 1:
+            plt.plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
+            plt.plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
+
+        plt.grid(True)
+        plt.legend(loc = "upper right")
+        return
+
     def DrawPosAndVelGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
         rfoot = []
         lfoot = []
@@ -1427,15 +1463,10 @@ class RecordedData():
         if self.Format == 1:
             axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
             axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
-            # axes[0].plot(xAxis, self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
-            #              label="Lfoot(real)" + additionalLabel)
-            # axes[0].plot(xAxis, self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
-            #              label="Rfoot(real)" + additionalLabel)
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
         self.LVelData = np.array(self.LVelData)
-
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) + transX ))) * fixedDeltaTime
         axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head speed"+ additionalLabel)

@@ -237,12 +237,19 @@ def test():
         plt.title(str(i))
         g.RecordedData(folder + "user3/박승준/stair2_75/"+str(i)+"/", 2).DrawPosAndVelGraph(axes)
         plt.show()
+#C:\Users\user\Desktop\Unity\VRStair\footdata\experiment\stair2_100_real
 
+f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
 
-
-
-
-
+#g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosGraph(additionalLabel="(ours)")
+#g.RecordedData(folder + "ex3_test/stiar2_Seo/1/", 1).DrawPosGraph(additionalLabel="(seo)")
+#g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosGraph(additionalLabel="(real)",transX=25)
+g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
+g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosAndVelGraph(axes,additionalLabel="(real)",transX=25)
+#g.RecordedData(folder + "experiment/stair2_100_ours/", 2).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
+#g.RecordedData(folder + "experiment/stair2_100_nagao/", 2).DrawPosAndVelGraph(axes,additionalLabel="(nagao)")
+#g.RecordedData(folder + "experiment/stair2_100_seo/", 2).DrawPosAndVelGraph(axes,additionalLabel="(seo)")
+plt.show()
 
 #ConvertRecordedData(folder + "ex3/seo/서승원/")
 #lengthCompare1(folder+"user3/")
@@ -251,7 +258,7 @@ def test():
 #eader(folder+"user3/")
 #MakeHeadDataFrame(folder+"user3/")
 #MakeAllTrajectoryDataFrame(folder+"user3/","real")
-MakeAllTrajectoryDataFrame(folder+"ex3/our/","our")
+#MakeAllTrajectoryDataFrame(folder+"ex3/our/","our")
 #WriteDataFrame(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)

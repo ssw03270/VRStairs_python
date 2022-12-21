@@ -29,7 +29,7 @@ blockCondition = ["stair1_75","stair1_100","stair2_75","stair2_100"]
 methodCondition = ["ours","real","nagao","seo"]
 methodOrder = list(permutations(methodCondition, 2))
 allOrder = list(permutations(blockCondition, 4))
-repeatNumber = 5
+repeatNumber = 2
 
 
 def makeCSV():

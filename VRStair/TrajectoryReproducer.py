@@ -85,7 +85,7 @@ def makeTrajectory1():
             makeByOrder(ProjectFolder+f,UnityFoloder + saveFolder + "stair1_" +str(bpmList[i]) + "/"+method + "/",bpmList[i],method,0.125)
 
 def makeTrajectory2():
-    fileList = ["ex3/Ours/임수빈/stair1_50/4/", "ex3/Ours/김미송/stair2_75/1/", "ex3/Ours/김미송/stair2_100/1/"]
+    fileList = ["ex3/Ours/임수빈/stair1_50/4/", "ex3/Ours/김미송/stair2_75/1/", "ex3/Seo/서승원/stair2_100/3/"]
     saveFolder = "/test/"
     bpmList = [50,75,100]
     methodList = ["Ours","Nagao","Seo"]
@@ -95,7 +95,7 @@ def makeTrajectory2():
             makeByOrder(ProjectFolder+f,UnityFoloder + saveFolder + "stair2_" +str(bpmList[i]) + "/"+method + "/",bpmList[i],method,0.25)
 
 #makeOne("ex3/our/김미송/stair1_100/1/",100,0.125)
-makeTwo("ex3/Ours/서승원/stair2_75/3/",75)
-# makeTrajectory1()
-# makeTrajectory2()
+#makeTwo("ex3/Seo/서승원/stair2_100/3/",100)
+makeTrajectory1()
+makeTrajectory2()
 #test()

@@ -381,7 +381,8 @@ def MakeMeanTrajectoryByRecordedData(folderName):
     rDf = pd.DataFrame()
     lDf = pd.DataFrame()
     for f in fList:
-
+        if ("조장현" in f) or ("김민정" in f) :
+            continue
         if ("임수빈" in f ) or ("서승원" in f) or ("김미송" in f):
             t = Trajectory_RD(f)
         else:
