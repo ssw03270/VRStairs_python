@@ -57,6 +57,15 @@ defalutRotationL = Vector3(22,-44,-40) * math.pi/180
 defalutRotationR = Vector3(10.7,53,140.7)* math.pi/180
 
 def writeData(path,content):
+    dir_path = path
+    dir_path = dir_path.split('/')
+    dir_path = "/".join(dir_path[:-1]) + "/"
+    try:
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+    except OSError:
+        print("Error: Failed to create the directory.")
+
     file = open(path, "w")
     file.write(content)
     file.close()

@@ -60,7 +60,6 @@ input <- (posdata [] , Th : float, interval : int , NotRemove : bool , isDebug :
 output -> [(s1,e2),,,,(s_n,e_n)] 
 '''
 def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = False):
-    f,axes = plt.subplots(3,1)
     posData = savgol_filter(posData,51,6)
     velData = MakeVelData(posData)
     aData = MakeVelData(velData,True)
@@ -100,6 +99,7 @@ def FindPoints(posData,Th = 0.05,interval = 25,NotRemove = False ,isDebug = Fals
                 resultList.append((sIndex, end))
 
     if isDebug:
+        f,axes = plt.subplots(3,1)
         print(resultList)
         axes[0].plot(posData)
         axes[1].plot(velData)
