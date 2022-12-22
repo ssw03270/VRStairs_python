@@ -239,13 +239,13 @@ def test():
         plt.show()
 #C:\Users\user\Desktop\Unity\VRStair\footdata\experiment\stair2_100_real
 
-f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
+#f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
 
-#g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosGraph(additionalLabel="(ours)")
+g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosGraph(additionalLabel="(ours)")
 #g.RecordedData(folder + "ex3_test/stiar2_Seo/1/", 1).DrawPosGraph(additionalLabel="(seo)")
 #g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosGraph(additionalLabel="(real)",transX=25)
-g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
-g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosAndVelGraph(axes,additionalLabel="(real)",transX=25)
+#g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
+#g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosAndVelGraph(axes,additionalLabel="(real)",transX=25)
 #g.RecordedData(folder + "experiment/stair2_100_ours/", 2).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
 #g.RecordedData(folder + "experiment/stair2_100_nagao/", 2).DrawPosAndVelGraph(axes,additionalLabel="(nagao)")
 #g.RecordedData(folder + "experiment/stair2_100_seo/", 2).DrawPosAndVelGraph(axes,additionalLabel="(seo)")
