@@ -21,23 +21,32 @@ def test(isDebug=False, makeRotation=False):
     # denoise all-axis
     for data, new_data in zip([lfoot_data, rfoot_data, neck_data], [new_lfoot_data, new_rfoot_data, new_neck_data]):
         for i in range(3):
-            new_data[i] = savgol_filter(data[i], 50, 2)
+            if i != 1:
+                new_data[i] = savgol_filter(data[i], 50, 2)
+            else:
+                new_data[i] = data[i]
 
     # change list to nparray
     new_lfoot_data = np.array(new_lfoot_data)
     new_rfoot_data = np.array(new_rfoot_data)
     new_neck_data = np.array(new_neck_data)
 
-    # denoise x-axis to set offset
-    new_lfoot_data[0] = new_lfoot_data[0][0]
-    new_rfoot_data[0] = new_rfoot_data[0][0]
-    new_neck_data[0] = new_neck_data[0][0]
-
-    # denoise z-axis
     lfoot_result = spl.FindPoints(new_lfoot_data[1], NotRemove=True,isDebug=isDebug)
     rfoot_result = spl.FindPoints(new_rfoot_data[1], NotRemove=True,isDebug=isDebug)
     rfoot_result[1] = rfoot_result[2]
 
+    # denoise x-axis to set offset
+    new_rfoot_data[0][lfoot_result[0][0]:lfoot_result[0][1]] = new_rfoot_data[0][lfoot_result[0][0]]
+    new_lfoot_data[0][rfoot_result[0][0]:rfoot_result[0][1]] = new_lfoot_data[0][rfoot_result[0][0]]
+    new_lfoot_data[0][rfoot_result[1][0]:rfoot_result[1][1]] = new_lfoot_data[0][rfoot_result[1][0]]
+
+    new_lfoot_data[0][lfoot_result[0][1]:] = new_lfoot_data[0][lfoot_result[0][1]]
+    new_rfoot_data[0][rfoot_result[1][1]:] = new_rfoot_data[0][rfoot_result[1][1]]
+
+    new_rfoot_data[0] = savgol_filter(new_rfoot_data[0], 20, 2)
+    new_lfoot_data[0] = savgol_filter(new_lfoot_data[0], 20, 2)
+
+    # denoise z-axis
     new_rfoot_data[2][lfoot_result[0][0]:lfoot_result[0][1]] = new_rfoot_data[2][lfoot_result[0][0]]
     new_lfoot_data[2][rfoot_result[0][0]:rfoot_result[0][1]] = new_lfoot_data[2][rfoot_result[0][0]]
     new_lfoot_data[2][rfoot_result[1][0]:rfoot_result[1][1]] = new_lfoot_data[2][rfoot_result[1][0]]
@@ -45,28 +54,23 @@ def test(isDebug=False, makeRotation=False):
     new_lfoot_data[2][lfoot_result[0][1]:] = new_lfoot_data[2][lfoot_result[0][1]]
     new_rfoot_data[2][rfoot_result[1][1]:] = new_rfoot_data[2][rfoot_result[1][1]]
 
-    new_rfoot_data[2] = savgol_filter(new_rfoot_data[2], 50, 2)
-    new_lfoot_data[2] = savgol_filter(new_lfoot_data[2], 50, 2)
+    new_rfoot_data[2] = savgol_filter(new_rfoot_data[2], 20, 2)
+    new_lfoot_data[2] = savgol_filter(new_lfoot_data[2], 20, 2)
 
     # denoise y-axis
     new_rfoot_data[1][lfoot_result[0][0]:lfoot_result[0][1]] = new_rfoot_data[1][lfoot_result[0][0]]
     new_lfoot_data[1][rfoot_result[0][0]:rfoot_result[0][1]] = new_lfoot_data[1][rfoot_result[0][0]]
     new_lfoot_data[1][rfoot_result[1][0]:rfoot_result[1][1]] = new_lfoot_data[1][rfoot_result[1][0]]
 
-    print(new_rfoot_data[1][rfoot_result[1][1]:])
     new_lfoot_data[1][lfoot_result[0][1]:] = new_lfoot_data[1][lfoot_result[0][1]]
     new_rfoot_data[1][rfoot_result[1][1]:] = new_rfoot_data[1][rfoot_result[1][1]]
-    print(new_rfoot_data[1][rfoot_result[1][1]:])
-
-    new_rfoot_data[1] = savgol_filter(new_rfoot_data[1], 50, 2)
-    new_lfoot_data[1] = savgol_filter(new_lfoot_data[1], 50, 2)
 
     # for debug
     if isDebug:
         plt.clf()
-        plt.plot(new_lfoot_data[1])
-        plt.plot(new_rfoot_data[1])
-        plt.plot(new_neck_data[1])
+        plt.plot(new_lfoot_data[0])
+        plt.plot(new_rfoot_data[0])
+        plt.plot(new_neck_data[0])
         plt.show()
 
     # make output file
@@ -77,6 +81,10 @@ def test(isDebug=False, makeRotation=False):
     GraphMaker.writeData(output_files['lfoot'], lfoot_output)
     GraphMaker.writeData(output_files['rfoot'], rfoot_output)
     GraphMaker.writeData(output_files['neck'], neck_output)
+
+    # make output time file
+    time_output = convert_data_to_text(new_lfoot_data, type='time')
+    GraphMaker.writeData(output_time_file, time_output)
 
     if makeRotation:
         # load rotation data
@@ -93,9 +101,6 @@ def test(isDebug=False, makeRotation=False):
         GraphMaker.writeData(output_rotation_files['rfoot'], rfoot_rotation_output)
         GraphMaker.writeData(output_rotation_files['neck'], neck_rotation_output)
 
-        # make output time file
-        time_output = convert_data_to_text(new_lfoot_data, type='time')
-        GraphMaker.writeData(output_time_file, time_output)
 
 def convert_data_to_text(data, type='transform'):
     data = np.array(data)
@@ -162,8 +167,9 @@ if __name__ == "__main__":
                     except:
                         print(files['lfoot'] + "is not found")
     else:
-        dataList = [['서승원', 'stair1_75', '4'], ['임수빈', 'stair2_75', '1'], ['서승원', 'stair2_100', '7'],
+        dataList = [['서승원', 'stair1_75', '4'], ['서승원', 'stair2_75', '2'], ['서승원', 'stair2_100', '7'],
                     ['서승원', 'stair1_100', '3']]
+        # dataList = [['서승원', 'stair2_75', '2']]
         for name, type, num in dataList:
             files = {'lfoot': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/Lfootdata.txt',
                      'rfoot': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/Rfootdata.txt',
@@ -184,6 +190,6 @@ if __name__ == "__main__":
 
             output_time_file = 'foot_dataset/output/experiment/' + type + '_real/TimeData.txt'
             try:
-                test()
+                test(isDebug=False)
             except:
                 print(files['lfoot'] + "is not found")
