@@ -1,28 +1,9 @@
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 from define import *
+from utility import *
 
 
-
-'''
-위치 리스트를 넣어주면, 속도 리스트로 만들어줌.
-fixedDeltaTime = 0.011111 (define.py 참고) 
- input 
-  - posData [] 
- output 
-  - velData [] 
-'''
-def MakeVelData(posData,smoothON = False):
-    velData = [0]
-    if smoothON :
-        if len(posData) > filterSize:
-            posData = savgol_filter(posData, filterSize, 6)
-        else:
-            print("MakeVelData - warning : filterSize(51) 보다 position 길이가 작으서 필터링 못함.")
-
-    for i in range(1,len(posData)):
-        velData.append((posData[i] - posData[i-1])/fixedDeltaTime)
-    return velData.copy()
 
 
 

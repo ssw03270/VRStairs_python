@@ -973,7 +973,7 @@ class StepAnalyzer():
                         curSteps[i].append(s)
 
 
-        for i in range(len(data.steps)):
+        for i in range(len(curSteps)):
             print("-------------Foot" + str(i) + "------------")
             if self.isDebug:
                 for s in curSteps[i]:
@@ -1176,10 +1176,10 @@ class RecordedData():
         self.LFootData = loadData(folderName + "Lfootdata.txt",True)
         self.HeadData = loadData(folderName + "WaistData.txt")
         #self.HeadData = np.array(HeadData)
-
-        # self.RFootData[1] = savgol_filter(self.RFootData[1], filterSize, 6)
-        # self.LFootData[1] = savgol_filter(self.LFootData[1], filterSize, 6)
-        # self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
+        #
+        self.RFootData[1] = savgol_filter(self.RFootData[1], filterSize, 6)
+        self.LFootData[1] = savgol_filter(self.LFootData[1], filterSize, 6)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
         self.RVelData = [[0],[0],[0]]
         self.LVelData = [[0],[0],[0]]
         self.HeadVelData = [0]
@@ -1417,7 +1417,7 @@ class RecordedData():
 
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
-        plt.plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
+        #splt.plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
         # axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
         #              label="test" + additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
@@ -1433,7 +1433,7 @@ class RecordedData():
         plt.legend(loc = "upper right")
         return
 
-    def DrawPosAndVelGraph(self,axes,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
+    def DrawPosAndVelGraph(self,axes,color = None,linestyle = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
         rfoot = []
         lfoot = []
         if(self.Format == 1):
@@ -1453,26 +1453,26 @@ class RecordedData():
 
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
-        axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
+        axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel,linestyle = linestyle)
         # axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
         #              label="test" + additionalLabel)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
-        axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel)
-        axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
+        axes[0].plot(xAxis,rfoot[1][startIndex:endIndex], color=color,label = "Rfoot"+ additionalLabel,linestyle = linestyle)
+        axes[0].plot(xAxis, lfoot[1][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel,linestyle = linestyle)
 
         if self.Format == 1:
-            axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)
-            axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel)
+            axes[0].plot(xAxis,self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel,linestyle = linestyle)
+            axes[0].plot(xAxis,self.LFootData.realPosData[1][startIndex:endIndex], color="gold",label = "Rfoot(input)"+ additionalLabel,linestyle = linestyle)
 
         self.HeadVelData = np.array(self.HeadVelData)
         self.RVelData = np.array(self.RVelData)
         self.LVelData = np.array(self.LVelData)
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) + transX ))) * fixedDeltaTime
-        axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head speed"+ additionalLabel)
+        axes[1].plot(xAxis,self.HeadVelData[startIndex:endIndex],label="head"+ additionalLabel,linestyle = linestyle)
         xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
-        axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot speed"+ additionalLabel)
-        axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot speed"+ additionalLabel)
+        axes[1].plot(xAxis,self.RVelData[1][startIndex:endIndex],color=color,label = "RFoot"+ additionalLabel,linestyle = linestyle)
+        axes[1].plot(xAxis,self.LVelData[1][startIndex:endIndex],color=color,label = "LFoot"+ additionalLabel,linestyle = linestyle)
 
         # if self.Format == 1:
         #     axes[1].plot(xAxis,self.RFootData.realVelData[1][startIndex:endIndex], color="indigo",label = "Lfoot(input)"+ additionalLabel)

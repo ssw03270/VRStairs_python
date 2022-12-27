@@ -8,7 +8,10 @@ import pandas as pd
 import seaborn as sns
 #folder = "C:/Users/Dobby/Documents/GitHub/VRStairs_python/VRStair/foot_dataset/"
 #folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
-folder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+#folder = "D:/Desktop/unity/VRStair/footdata/" #"C:/Users/user/Desktop/Unity/VRStair/footdata/"
+ProjectFolder = os.getcwd()  #"C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
+ProjectFolder = ProjectFolder.replace("\\","/",10)
+folder = ProjectFolder + "/foot_dataset/"
 #folder = "C:/Users/user/Desktop/VRStair_python/git/VRStair/foot_dataset/"
 #data =  g.RecordedData(folder)
 
@@ -78,7 +81,7 @@ def MakeHeadDataFrame(folderName):
         #sns.lineplot(x="time", y="velY", data=df,label = c)
 
 def MakeAllTrajectoryDataFrame(folderName,method= ""):
-    condition = ["stair1_50", "stair1_75", "stair1_100"]#,"stair2_50", "stair2_75", "stair2_100"]
+    condition = ["stair1_50", "stair1_75", "stair1_100","stair2_50", "stair2_75", "stair2_100"]
     result  = readFolder(folderName,condition)
     for c in condition:
         curF = "dataFrame/"+method + "/" + c + "/"
@@ -88,7 +91,7 @@ def MakeAllTrajectoryDataFrame(folderName,method= ""):
 def reader(folderName):
     condition = ["stair1_50", "stair1_75", "stair1_100", "stair2_50", "stair2_75", "stair2_100"]
     result = readFolder(folderName,condition)
-    writeCSV(result,condition,"11-17")
+    writeCSV(result,condition,"ex1_result")
 
 def reader1(folderName):
     condition = ["stair1_60","stair2_60","stair1_85","stair2_85"]
@@ -235,29 +238,30 @@ def test():
     for i in range(0,10):
         f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
         plt.title(str(i))
-        g.RecordedData(folder + "user3/박승준/stair2_75/"+str(i)+"/", 2).DrawPosAndVelGraph(axes)
+        g.RecordedData(folder + "user3/이준혁/stair2_75/"+str(i)+"/", 2).DrawPosAndVelGraph(axes)
         plt.show()
 #C:\Users\user\Desktop\Unity\VRStair\footdata\experiment\stair2_100_real
 
 #f, axes = plt.subplots(2, 1, sharey=True, sharex=True)
 
-g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosGraph(additionalLabel="(ours)")
+#g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosGraph(additionalLabel="(ours)")
 #g.RecordedData(folder + "ex3_test/stiar2_Seo/1/", 1).DrawPosGraph(additionalLabel="(seo)")
 #g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosGraph(additionalLabel="(real)",transX=25)
 #g.RecordedData(folder + "ex3_test/stiar2_Ours/1/", 1).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
-#g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosAndVelGraph(axes,additionalLabel="(real)",transX=25)
+#g.RecordedData(folder + "experiment/stair2_100_real/", 2).DrawPosAndVelGraph(axes,additionalLabel="(real)")
 #g.RecordedData(folder + "experiment/stair2_100_ours/", 2).DrawPosAndVelGraph(axes,additionalLabel="(ours)")
 #g.RecordedData(folder + "experiment/stair2_100_nagao/", 2).DrawPosAndVelGraph(axes,additionalLabel="(nagao)")
 #g.RecordedData(folder + "experiment/stair2_100_seo/", 2).DrawPosAndVelGraph(axes,additionalLabel="(seo)")
-plt.show()
 
-#ConvertRecordedData(folder + "ex3/seo/서승원/")
+#plt.show()
+
 #lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")
 #analyze(folder+"user3/")
-#eader(folder+"user3/")
+#reader(folder+"user3/")
 #MakeHeadDataFrame(folder+"user3/")
-#MakeAllTrajectoryDataFrame(folder+"user3/","real")
+#WriteDataFrame(folder+"user3/")
+MakeAllTrajectoryDataFrame(folder+"user3/","real")
 #MakeAllTrajectoryDataFrame(folder+"ex3/our/","our")
 #WriteDataFrame(folder+"user3/")
 #reader1(folder)
@@ -265,11 +269,4 @@ plt.show()
 #g.RecordedData(folder+"user3/서민영/stair2_100/0/",2).DrawPosAndVelGraph(axes)
 #plt.show()
 
-
-#Stair1.DrawGrahp(color= "C3")
-# folder3 = "C:/Users/user/Desktop/Unity/VRStair/footdata/s1/0/"
-# Stair2 = g.RecordedData(folder3,2)
-# Stair2.DrawGrahp()
-#Stair1.DrawGrahp(x = "Distance")
-#Stair2.DrawGrahp(x = "Distance")
 

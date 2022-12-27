@@ -24,6 +24,7 @@ f, axes = plt.subplots(2, 1)
 
 def ReadDataFrame(condition,type):
     df = pd.read_csv(ProjectFolder + "/dataFrame/" + condition+"/"+type+ ".csv")
+    sns.lineplot(x="time", y="y", data=df, ax=axes[0], label=condition)
     sns.lineplot(x="time", y="velY", data=df,ax=axes[1],label = condition)
 
 #d1 = g.DrawAVGHeadGraph(axes,"stair2_75")
@@ -71,7 +72,8 @@ for i in range(1,3):
     g.RecordedData(UnityFolder + "ex3_test/stiar1_Seo/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(1,i,"seo"))
 
 #g.RecordedData(UnityFolder + "test/0/",2).DrawPosAndVelGraph(axes)
-g.RecordedData(UnityFolder + "user3/서승원/stair1_75/4/",2).DrawPosAndVelGraph(axes,addtionalHeight=0.6)
+#g.RecordedData(UnityFolder + "user3/서승원/stair1_75/4/",2).DrawPosAndVelGraph(axes,addtionalHeight=0.6)
+#ReadDataFrame("stair2_75","Second Foot")
 axes[0].set_title("position")
 axes[1].set_title("vertical velocity")
 

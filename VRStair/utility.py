@@ -2,6 +2,8 @@
 import math
 import os
 import numpy as np
+from scipy.signal import savgol_filter
+from define import *
 
 class Vector3:
     def __init__(self, x, y, z):
@@ -41,6 +43,27 @@ LfootOffset = Vector3(-0.08,0.1,0)
 HeadOffset = Vector3(0,1.6,0)
 defalutRotationL = Vector3(22,-44,-40) * math.pi/180
 defalutRotationR = Vector3(10.7,53,140.7)* math.pi/180
+
+'''
+위치 리스트를 넣어주면, 속도 리스트로 만들어줌.
+fixedDeltaTime = 0.011111 (define.py 참고) 
+ input 
+  - posData [] 
+ output 
+  - velData [] 
+'''
+def MakeVelData(posData,smoothON = False):
+    velData = [0]
+    if smoothON :
+        if len(posData) > filterSize:
+            posData = savgol_filter(posData, filterSize, 6)
+        else:
+            print("MakeVelData - warning : filterSize(51) 보다 position 길이가 작으서 필터링 못함.")
+
+    for i in range(1,len(posData)):
+        velData.append((posData[i] - posData[i-1])/fixedDeltaTime)
+    return velData.copy()
+
 
 def writeData(path,content):
     file = open(path, "w")
