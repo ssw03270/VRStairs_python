@@ -22,7 +22,7 @@ def f(z, std):
     return output
 
 
-def normal_distribution(x, std, h,max_velocity):
+def normal_distribution(x, std, h,max_velocity = 0):
     return 1 / (std * math.sqrt(2*math.pi)) * math.pow(math.e, -math.pow(x/std,2)/2) * h
 
 
@@ -180,5 +180,22 @@ def FindCurGaussian(h ,curH, max_velocity,startTH):
     plt.show()
 
 
-calcGaussian(5,0.8,0.25)
+def findGaussain_time(h,time):
+    sigma = width * time / 6
+    x = []
+    y = []
+    ans = 0
+    n = 0
+    for k in np.arange(-3* sigma, 3 * sigma, width):
+        n += 1
+        x.append(k)
+        height = normal_distribution(k,sigma,h)
+        y.append(height)
+        ans += height * width
+    print(ans, n)
+    plt.plot(x,y)
+    plt.show()
+
+findGaussain_time(0.25,45)
+#calcGaussian(5,0.8,0.25)
 #FindCurGaussian(0.25,0.03492576,0.9302973,0.6536027)

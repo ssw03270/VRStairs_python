@@ -54,19 +54,20 @@ def animate_vel(self):
         axes[0].cla()
         axes[1].cla()
 
-        real.DrawPosAndVelGraph(axes,linestyle= "--", additionalLabel="(real)", transX=15)
+        real.DrawPosAndVelGraph(axes,linestyle= "--", additionalLabel="(real)", transX=18)
         axes[0].plot(x_val, message["real_right"] - message["real_right"][0],label = "right(input)",color = "C3")
         axes[0].plot(x_val, message["real_left"] - message["real_left"][0],label = "left(input)",color = "C4")
 
         axes[0].plot(x_val, message["virtual_head"] - message["virtual_right"][0], label="Head",color = "C0")
-        axes[0].plot(x_val, message["virtual_right"] - message["virtual_right"][0],label = "RFoot",color ="C1" )
+        axes[0].plot(x_val, message["virtual_right"] - message["virtual_right"][0],label = "RFoot",color ="C1")
         axes[0].plot(x_val, message["virtual_left"]- message["virtual_left"][0], label="LFoot",color = "C2")
 
-        r_rightVel = MakeVelData(message["real_right"])
-        r_leftVel =  MakeVelData(message["real_left"])
-        v_headVel = MakeVelData(message["virtual_head"])
-        v_rightVel = MakeVelData(message["virtual_right"])
-        v_leftVel = MakeVelData(message["virtual_left"])
+        r_rightVel = MakeVelData(message["real_right"],False)
+        r_leftVel =  MakeVelData(message["real_left"],False)
+        v_headVel = MakeVelData(message["virtual_head"],False)
+        v_headVel2 = MakeVelData(message["virtual_head"] - message["real_head"] ,False)
+        v_rightVel = MakeVelData(message["virtual_right"],False)
+        v_leftVel = MakeVelData(message["virtual_left"],False)
         axes[1].plot(x_val,r_rightVel ,label="RFoot(input)",color = "C3")
         axes[1].plot(x_val, r_leftVel,label="LFoot(input)",color = "C4")
         axes[1].plot(x_val,v_headVel , label="head(v)",color = "C0")
@@ -74,6 +75,7 @@ def animate_vel(self):
         axes[1].plot(x_val, v_leftVel, label="left(v)",color = "C2")
         axes[1].plot(x_val, np.array(v_rightVel) - np.array(r_rightVel) , label = "right(net)",color = "C5")
         axes[1].plot(x_val, np.array(v_leftVel) - np.array(r_leftVel), label="left(net)",color = "C6")
+        #axes[1].plot(x_val, v_headVel2, label="head(net)", color="C7")
     except:
         print("error")
         pass
@@ -85,11 +87,11 @@ def animate_vel(self):
     axes[1].legend(loc='upper right')
 
 f, axes = plt.subplots(2, 1)
-condition = "stair2_50"
-#real = g.RecordedData(ProjectFolder + "/dataFrame/" + condition + "/",2)
+condition = "stair2_75"
+real = g.RecordedData(ProjectFolder + "/dataFrame/" + condition + "/",2)
 #real = g.RecordedData(UnityFolder + "experiment/stair1_100_real/", 2)
-#real = g.RecordedData(UnityFolder + "experiment/stair2_100_real/", 2)
-real = g.RecordedData(UnityFolder + "user3/황준태/stair2_50/3/", 2)
+#real = g.RecordedData(UnityFolder + "experiment/stair2_75_real/", 2)
+#real = g.RecordedData(UnityFolder + "user3/황준태/stair2_50/3/", 2)
 ani = FuncAnimation(f, animate_vel, interval=30)
 #ani = FuncAnimation(plt.gcf(), animate, interval=11)
 plt.tight_layout()

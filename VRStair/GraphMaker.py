@@ -735,25 +735,26 @@ class Step():
         plt.scatter(self.validStart-1 + self.maxYIndex,self.maxY)
 
     def IsOutlier(self,avgDict,SDDict):
+        standard = 3
         if not self.isHead:
             if self.length/avgDict["length"] < 0.4 or self.length/avgDict["length"] > 2 or abs(self.length - avgDict["length"]) > 3 * SDDict["length"]:
                 print("length out lier")
                 return True
             if self.verticalDistance/avgDict["verticalDistance"] < 0.3 \
                     or self.verticalDistance/avgDict["verticalDistance"] > 2 \
-                    or abs(self.verticalDistance - avgDict["verticalDistance"]) > 3 * SDDict["verticalDistance"]:
+                    or abs(self.verticalDistance - avgDict["verticalDistance"]) > standard * SDDict["verticalDistance"]:
                 print("verticalDistance out lier")
                 return True
             if abs(self.maxY - avgDict["maxY"]) > 3 * SDDict["maxY"] :
                 print("maxY out lier")
                 return True
         if self.isHead:
-            if self.length/avgDict["length"] < 0.5 or self.length/avgDict["length"] > 2 or abs(self.length - avgDict["length"]) > 3 * SDDict["length"]:
+            if self.length/avgDict["length"] < 0.5 or self.length/avgDict["length"] > 2 or abs(self.length - avgDict["length"]) > standard * SDDict["length"]:
                 print("length out lier")
                 return True
             if self.verticalDistance / avgDict["verticalDistance"] < 0.3 \
                     or (self.verticalDistance / avgDict["verticalDistance"])> 2 or \
-                    abs(self.verticalDistance - avgDict["verticalDistance"]) > 3 * SDDict["verticalDistance"]:
+                    abs(self.verticalDistance - avgDict["verticalDistance"]) > standard * SDDict["verticalDistance"]:
                 print("verticalDistance out lier")
                 return True
         return False
@@ -996,7 +997,7 @@ class StepAnalyzer():
                 netSteps[0].append(data.netSteps[1])
                 netSteps[1].append(data.netSteps[len(data.netSteps)-1])
 
-        print("-------------Net speed2------------")
+        #print("-------------Net speed2------------")
         if self.isDebug:
             for s in netSteps[0]:
                 s.Draw()
@@ -1006,7 +1007,7 @@ class StepAnalyzer():
             for s in netSteps[1]:
                 s.Draw()
             plt.show()
-        print("-------------Net speed3------------")
+        #print("-------------Net speed3------------")
         self.AnalyzeStep(netSteps[1],False)
 
 
@@ -1028,14 +1029,14 @@ class StepAnalyzer():
         self.dataFrameDict["Head 1"] = df1
         self.dataFrameDict["Head 2"] = df2
 
-        print("-------------Head movement1------------")
+        #print("-------------Head movement1------------")
         if self.isDebug:
             for h in self.firstHeads:
                 h.Draw()
             plt.show()
         self.AnalyzeStep(self.firstHeads)
 
-        print("-------------Head movement2------------")
+        #print("-------------Head movement2------------")
         if self.isDebug:
             for h in self.lastHeads:
                 h.Draw()
@@ -1089,7 +1090,7 @@ class StepAnalyzer():
     def AnalyzeStep(self,steps,removeOutLier = True):
         infoDict = self.GetAvgInfo(steps)
         SDDict = self.GetSDInfo(infoDict, steps)
-        print("Before remove OutLier:" ,infoDict)
+        #print("Before remove OutLier:" ,infoDict)
         if removeOutLier:
             self.RemoveOutlier(steps,infoDict,SDDict)
 
@@ -1101,10 +1102,10 @@ class StepAnalyzer():
         # else:
         #     plt.cla()
         infoDict = self.GetAvgInfo(steps)
-        print("After remove OutLier:", infoDict)
+        #print("After remove OutLier:", infoDict)
         infoDict["total count"] = len(steps)
         SDDict = self.GetSDInfo(infoDict,steps)
-        print("SD",SDDict)
+        #print("SD",SDDict)
         self.avgDicts.append(infoDict)
         self.sdDicts.append(SDDict)
 
@@ -1396,6 +1397,91 @@ class RecordedData():
         axes[1].grid(True)
         axes[0].legend(loc = "upper right")
         axes[1].legend(loc = "upper right")
+
+    def DrawDisGraph(self,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight =0,transX = 0):
+        rfoot = []
+        lfoot = []
+        if (self.Format == 1):
+            rfoot = self.RFootData.blendPosData
+            lfoot = self.LFootData.blendPosData
+
+        if (self.Format == 2 or self.Format == 3):
+            rfoot = self.RFootData
+            lfoot = self.LFootData
+
+        if (startIndex == None):
+            startIndex = 1
+        if (endIndex == None):
+            endIndex = -1
+
+
+        rfoot = np.array(rfoot)
+        lfoot = np.array(lfoot)
+
+        rd = []
+        ld = []
+        xAxis = np.array(list(range(startIndex + 1 + transX, len(self.HeadData[2]) + transX))) * fixedDeltaTime
+
+        for i in range(len(rfoot[0])):
+            rd.append(math.sqrt( rfoot[0][i]**2 + rfoot[2][i]**2))
+            ld.append(math.sqrt( lfoot[0][i]**2 + lfoot[2][i]**2))
+
+        # splt.plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
+        # axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
+        #              label="test" + additionalLabel)
+
+        xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
+        plt.plot(xAxis,  rd[startIndex:endIndex], color=color, label="Rfoot" + additionalLabel)
+        plt.plot(xAxis, ld[startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
+        # plt.vlines()
+        # axes[0].vlines(step.validStart * fixedDeltaTime, 0, 2, colors="black", linestyles="--")
+        if self.Format == 1:
+            plt.plot(xAxis, self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
+                     label="Lfoot(input)" + additionalLabel)
+            plt.plot(xAxis, self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
+                     label="Rfoot(input)" + additionalLabel)
+
+        plt.grid(True)
+        plt.legend(loc="upper right")
+        return
+
+    def DrawZGraph(self,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight =0,transX = 0):
+        rfoot = []
+        lfoot = []
+        if (self.Format == 1):
+            rfoot = self.RFootData.blendPosData
+            lfoot = self.LFootData.blendPosData
+
+        if (self.Format == 2 or self.Format == 3):
+            rfoot = self.RFootData
+            lfoot = self.LFootData
+
+        if (startIndex == None):
+            startIndex = 1
+        if (endIndex == None):
+            endIndex = -1
+
+        rfoot = np.array(rfoot)
+        lfoot = np.array(lfoot)
+
+        xAxis = np.array(list(range(startIndex + 1 + transX, len(self.HeadData[2]) + transX))) * fixedDeltaTime
+        # splt.plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel)
+        # axes[0].plot(xAxis, np.array(self.testData[1][startIndex:endIndex]) + addtionalHeight, color=color,
+        #              label="test" + additionalLabel)
+        xAxis = np.array(list(range(startIndex + 1 + transX, len(rfoot[1]) + transX))) * fixedDeltaTime
+        plt.plot(xAxis, rfoot[2][startIndex:endIndex], color=color, label="Rfoot" + additionalLabel)
+        plt.plot(xAxis, lfoot[2][startIndex:endIndex], color=color, label="Lfoot" + additionalLabel)
+        # plt.vlines()
+        # axes[0].vlines(step.validStart * fixedDeltaTime, 0, 2, colors="black", linestyles="--")
+        if self.Format == 1:
+            plt.plot(xAxis, self.RFootData.realPosData[1][startIndex:endIndex], color="indigo",
+                     label="Lfoot(input)" + additionalLabel)
+            plt.plot(xAxis, self.LFootData.realPosData[1][startIndex:endIndex], color="gold",
+                     label="Rfoot(input)" + additionalLabel)
+
+        plt.grid(True)
+        plt.legend(loc="upper right")
+        return
 
     def DrawPosGraph(self,color = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight =0,transX = 0):
         rfoot = []
