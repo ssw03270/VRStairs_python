@@ -194,7 +194,7 @@ def analyze(folderName):
     # Compare2Result(cDatas["stair1_85"].avgDicts,cDatas["stair2_85"].avgDicts)
     # print("compare(stair1_60,stair2_60)")
     # Compare2Result(cDatas["stair1_60"].avgDicts,cDatas["stair2_60"].avgDicts)
-    comparePair = ["stair2_100","stair2_100"]
+    comparePair = ["stair2_50","stair2_100"]
     # print("-----------------------compare(stair1_60, stair1_85)-----------------------------")
     # Compare2Result(cDatas["stair1_60"].avgDicts, cDatas["stair1_85"].avgDicts)
     # print("-----------------------compare(stair2_60, stair2_85)-----------------------------")
@@ -202,8 +202,9 @@ def analyze(folderName):
     print(comparePair)
     #Compare2Result(cDatas[comparePair[0]].avgDicts, cDatas[comparePair[1]].avgDicts)
 
-    f, axes = plt.subplots(2, 1)
+
     for i in range(0,10):
+        f, axes = plt.subplots(2, 1)
         axes[0].set_title(comparePair[0])
         cDatas[comparePair[0]].data[i].DrawPosAndVelGraph(axes,color="C0")
         #cDatas[comparePair[0]].data[i].DrawPosAndVelGraph_z(axes)
@@ -218,7 +219,7 @@ def analyze(folderName):
         #cDatas[comparePair[0]].data[i].DrawSectionPosAndVelGraph(axes,1,2," ("+comparePair[0]+")")
         # cDatas[comparePair[1]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[1]+")")
         #cDatas[comparePair[2]].data[i].DrawSectionPosAndVelGraph(axes,1, 2, " ("+comparePair[2]+")")
-    plt.show()
+        plt.show()
     #for i in range(0, 10):
     #    cDatas["stair2_30"].data[i].DrawPosAndVelGraph(axes)
 
@@ -242,11 +243,11 @@ def test():
 #ConvertRecordedData(folder + "ex3/seo/서승원/")
 #lengthCompare1(folder+"user3/")
 #reader2(folder+"user/")
-#analyze(folder+"user3/")
+analyze(folder+"user3/")
 #eader(folder+"user3/")
 #MakeHeadDataFrame(folder+"user3/")
 #MakeAllTrajectoryDataFrame(folder+"user3/","real")
-MakeAllTrajectoryDataFrame(folder+"ex3/our/","our")
+#MakeAllTrajectoryDataFrame(folder+"ex3/our/","our")
 #WriteDataFrame(folder+"user3/")
 #reader1(folder)
 # f, axes = plt.subplots(2, 1, sharey=True, sharex=True)

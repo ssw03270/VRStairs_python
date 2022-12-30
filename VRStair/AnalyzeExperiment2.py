@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 
 names = ['박승준']
 files = ['chose_1_0.csv', 'chose_1_1.csv', 'chose_1_2.csv', 'chose_1_3.csv']
@@ -8,16 +9,18 @@ col_name = ['nagao', 'ours', 'seo', 'real']
 row_name = ['nagao', 'ours', 'seo', 'real']
 
 scores = {'stair1_75': np.zeros((4, 4)), 'stair1_100': np.zeros((4, 4)), 'stair2_75': np.zeros((4, 4)), 'stair2_100': np.zeros((4, 4))}
-for file in files:
-    for name in names:
-        path = './experiment2/' + name + '/' + file
-        data = pd.read_csv(path)
+# for file in files:
+#     for name in names:
+file_list = os.listdir('./experiment2/')
+for file in file_list:
+    path = './experiment2/' + file
+    data = pd.read_csv(path)
 
-        for index, row in data.iterrows():
-            if row['chose'] == 'First':
-                scores[row['current block']][methods[row['first']]][methods[row['second']]] += 1
-            elif row['chose'] == 'Second':
-                scores[row['current block']][methods[row['second']]][methods[row['first']]] += 1
+    for index, row in data.iterrows():
+        if row['chose'] == 'First':
+            scores[row['current block']][methods[row['first']]][methods[row['second']]] += 1
+        elif row['chose'] == 'Second':
+            scores[row['current block']][methods[row['second']]][methods[row['first']]] += 1
 
 for tag in scores:
     print(tag)
