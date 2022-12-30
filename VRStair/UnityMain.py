@@ -11,7 +11,8 @@ import seaborn as sns
 
 ProjectFolder = os.getcwd()  #"C:/Users/user/Desktop/Unity/VRStair/footdata/"#"C:/Users/Dobby/Documents/GitHub/VRStair/footdata/"
 ProjectFolder = ProjectFolder.replace("\\","/",10)
-UnityFolder = "D:/Desktop/unity/VRStair/footdata/" #"C:/Users/user/Desktop/Unity/VRStair/footdata/"
+UnityFolder = "C:/Users/user/Desktop/Unity/VRStair/footdata/"
+#"D:/Desktop/unity/VRStair/footdata/" #"C:/Users/user/Desktop/Unity/VRStair/footdata/"
 folder = UnityFolder
 
 # Rvelocity =  g.loadData(folder+"Rvelocity.txt")
@@ -63,20 +64,26 @@ def saveFolder(height,bpm,method):
 
     return "experiment/" +stair + "_" + bpm + "_" + method + "/"
 
-for i in range(1,3):
-    g.RecordedData(UnityFolder + "ex3_test/stiar2_Ours/"+str(i) +"/", 1,False).writeToTxt(UnityFolder + saveFolder(2,i,"ours"))
-    g.RecordedData(UnityFolder + "ex3_test/stiar2_Nagao/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(2,i,"nagao"))
-    g.RecordedData(UnityFolder + "ex3_test/stiar2_Seo/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(2,i,"seo"))
-    g.RecordedData(UnityFolder + "ex3_test/stiar1_Ours/"+str(i) +"/", 1,False).writeToTxt(UnityFolder + saveFolder(1,i,"ours"))
-    g.RecordedData(UnityFolder + "ex3_test/stiar1_Nagao/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(1,i,"nagao"))
-    g.RecordedData(UnityFolder + "ex3_test/stiar1_Seo/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(1,i,"seo"))
+def makeEx3Graph():
+    for i in range(1,3):
+        g.RecordedData(UnityFolder + "ex3_test/stiar2_Ours/"+str(i) +"/", 1,False).writeToTxt(UnityFolder + saveFolder(2,i,"ours"))
+        g.RecordedData(UnityFolder + "ex3_test/stiar2_Nagao/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(2,i,"nagao"))
+        g.RecordedData(UnityFolder + "ex3_test/stiar2_Seo/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(2,i,"seo"))
+        #g.RecordedData(UnityFolder + "ex3_test/stiar1_Ours/"+str(i) +"/", 1,False).writeToTxt(UnityFolder + saveFolder(1,i,"ours"))
+        #g.RecordedData(UnityFolder + "ex3_test/stiar1_Nagao/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(1,i,"nagao"))
+        #g.RecordedData(UnityFolder + "ex3_test/stiar1_Seo/" + str(i) + "/", 1, False).writeToTxt(UnityFolder + saveFolder(1,i,"seo"))
 
+makeEx3Graph()
 #g.RecordedData(UnityFolder + "test/0/",2).DrawPosAndVelGraph(axes)
 #g.RecordedData(UnityFolder + "user3/서승원/stair1_75/4/",2).DrawPosAndVelGraph(axes,addtionalHeight=0.6)
 #ReadDataFrame("stair2_75","Second Foot")
-axes[0].set_title("position")
-axes[1].set_title("vertical velocity")
+# axes[0].set_title("position")
+# axes[1].set_title("vertical velocity")
+# g.RecordedData(UnityFolder + "for_test/NEW/0/", 1).DrawPosAndVelGraph(axes,additionalLabel="(new)",transX=0)
+# g.RecordedData(UnityFolder + "for_test/test/1/", 1).DrawPosAndVelGraph(axes,additionalLabel="(original)")
 
+# g.RecordedData(UnityFolder + "experiment/stair2_75_real/", 2).DrawPosAndVelGraph(axes,linestyle="--",transX=3,additionalLabel="(real)")
+# g.RecordedData(UnityFolder +  "ex3/our/임수빈/stair2_75/2/",1).DrawPosAndVelGraph(axes)
 plt.rc('font', size=10)
 plt.rc('axes', labelsize=20)
 plt.rc('xtick', labelsize=20)  # x축 눈금 폰트 크기

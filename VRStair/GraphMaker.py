@@ -1154,12 +1154,12 @@ class RecordedData():
         rfoot = []
         lfoot = []
         for i in range(3):
-            # rfoot.append(savgol_filter(self.RFootData.blendPosData[i], filterSize, 6))
-            # lfoot.append(savgol_filter(self.LFootData.blendPosData[i], filterSize, 6))
+            #rfoot.append(savgol_filter(self.RFootData.blendPosData[i], filterSize, 6))
+            #lfoot.append(savgol_filter(self.LFootData.blendPosData[i], filterSize, 6))
             rfoot.append(self.RFootData.blendPosData[i])
             lfoot.append(self.LFootData.blendPosData[i])
 
-        #self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
+        self.HeadData[1] = savgol_filter(self.HeadData[1], filterSize, 6)
 
         self.RVelData = [[0],[0],[0]]
         self.LVelData = [[0],[0],[0]]
@@ -1519,7 +1519,7 @@ class RecordedData():
         plt.legend(loc = "upper right")
         return
 
-    def DrawPosAndVelGraph(self,axes,color = None,linestyle = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0):
+    def DrawPosAndVelGraph(self,axes,color = None,linestyle = None,additionalLabel = "", startIndex = None, endIndex = None,addtionalHeight = 0,transX = 0,OnFindStart = True):
         rfoot = []
         lfoot = []
         if(self.Format == 1):
@@ -1536,7 +1536,8 @@ class RecordedData():
             endIndex = -1
         rfoot = np.array(rfoot)
         lfoot = np.array(lfoot)
-
+        if(OnFindStart):
+            transX = -self.findStartPoint2(rfoot[1]) + 10
 
         xAxis = np.array(list(range(startIndex+1 + transX, len(self.HeadData[1]) +transX))) * fixedDeltaTime
         axes[0].plot(xAxis,np.array(self.HeadData[1][startIndex:endIndex]) + addtionalHeight, color=color, label="head" + additionalLabel,linestyle = linestyle)
@@ -1584,7 +1585,6 @@ class RecordedData():
     def findStartPoint2(self,posData):
         for i in range(len(posData)-3):
             if (posData[i]-posData[0]) > 0.02 and (posData[i+1]-posData[0]) > 0.02 and (posData[i+2]-posData[0]) > 0.02:
-                print(i)
                 return i
         print("not found")
         return i
