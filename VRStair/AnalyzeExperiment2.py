@@ -7,25 +7,33 @@ methods = {'nagao': 0, 'ours': 1, 'seo': 2, 'real': 3}
 col_name = ['nagao', 'ours', 'seo', 'real']
 row_name = ['nagao', 'ours', 'seo', 'real']
 
-for name in names:
-    scores = np.zeros((4, 4))
-
-    for file in files:
-        score = np.zeros((4, 4))
+scores = {'stair1_75': np.zeros((4, 4)), 'stair1_100': np.zeros((4, 4)), 'stair2_75': np.zeros((4, 4)), 'stair2_100': np.zeros((4, 4))}
+for file in files:
+    for name in names:
         path = './experiment2/' + name + '/' + file
         data = pd.read_csv(path)
 
         for index, row in data.iterrows():
             if row['chose'] == 'First':
-                score[methods[row['first']]][methods[row['second']]] += 1
+                scores[row['current block']][methods[row['first']]][methods[row['second']]] += 1
             elif row['chose'] == 'Second':
-                score[methods[row['second']]][methods[row['first']]] += 1
+                scores[row['current block']][methods[row['second']]][methods[row['first']]] += 1
 
-        score_data = pd.DataFrame(score, columns=col_name)
-        score_data.index = row_name
-        print(score_data)
-        scores = scores + score
+for tag in scores:
+    print(tag)
+    score = scores[tag]
+    score_data = pd.DataFrame(score, columns=col_name)
+    score_data.index = row_name
+    print("전체 스코어 (표의 좌측이 이긴 쪽, 상단이 진 쪽)")
+    print(score_data)
 
-    scores_data = pd.DataFrame(scores, columns=col_name)
-    scores_data.index = row_name
-    print(scores_data)
+    print("\na vs b에서 a가 이긴 비율")
+    for target in ['nagao', 'ours', 'seo']:
+        current = 'real'
+        print(current, 'vs', target, ': ', score_data[target][current] / (score_data[current][target] + score_data[target][current]) * 100)
+
+    for target in ['nagao', 'seo']:
+        current = 'ours'
+        print(current, 'vs', target, ': ', score_data[target][current] / (score_data[current][target] + score_data[target][current]) * 100)
+
+    print('---------------\n')
