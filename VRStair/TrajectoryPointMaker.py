@@ -34,8 +34,8 @@ def test(df, stair_type, walk_speed, num="", isDebug=False):
     lfoot_net_data = lfoot_net_data - lfoot_net_data[0] + new_lfoot_data[1][0]
     rfoot_net_data = rfoot_net_data - rfoot_net_data[0] + new_rfoot_data[1][0]
 
-    lfoot_result = spl.FindPoints(new_lfoot_data[1], NotRemove=True,isDebug=False)
-    rfoot_result = spl.FindPoints(new_rfoot_data[1], NotRemove=True,isDebug=False)
+    lfoot_result = spl.FindPoints(new_lfoot_data[1], NotRemove=True,isDebug=True)
+    rfoot_result = spl.FindPoints(new_rfoot_data[1], NotRemove=True,isDebug=True)
     rfoot_result[1] = rfoot_result[2]
 
     # get data for analyze
@@ -181,7 +181,7 @@ if __name__ == "__main__":
                                           'neck': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/WaistRotationData.txt'}
                         try:
                             t = type.split('_')
-                            df = test(df, t[0], t[1], num, isDebug=False)
+                            df = test(df, t[0], t[1], num, isDebug=True)
                         except:
                             print(files['lfoot'] + "is not found")
     else:

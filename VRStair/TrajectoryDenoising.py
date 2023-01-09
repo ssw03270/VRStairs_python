@@ -51,26 +51,26 @@ def test(isDebug=False, makeRotation=False):
     new_lfoot_data[2][rfoot_result[0][0]:rfoot_result[0][1]] = new_lfoot_data[2][rfoot_result[0][0]]
     new_lfoot_data[2][rfoot_result[1][0]:rfoot_result[1][1]] = new_lfoot_data[2][rfoot_result[1][0]]
 
-    new_lfoot_data[2][lfoot_result[0][1]:] = new_lfoot_data[2][lfoot_result[0][1]]
+    new_lfoot_data[2][lfoot_result[0][1]:] = new_rfoot_data[2][rfoot_result[1][1]]
     new_rfoot_data[2][rfoot_result[1][1]:] = new_rfoot_data[2][rfoot_result[1][1]]
 
     new_rfoot_data[2] = savgol_filter(new_rfoot_data[2], 20, 2)
     new_lfoot_data[2] = savgol_filter(new_lfoot_data[2], 20, 2)
 
-    # denoise y-axis
-    new_rfoot_data[1][lfoot_result[0][0]:lfoot_result[0][1]] = new_rfoot_data[1][lfoot_result[0][0]]
-    new_lfoot_data[1][rfoot_result[0][0]:rfoot_result[0][1]] = new_lfoot_data[1][rfoot_result[0][0]]
-    new_lfoot_data[1][rfoot_result[1][0]:rfoot_result[1][1]] = new_lfoot_data[1][rfoot_result[1][0]]
-
-    new_lfoot_data[1][lfoot_result[0][1]:] = new_lfoot_data[1][lfoot_result[0][1]]
-    new_rfoot_data[1][rfoot_result[1][1]:] = new_rfoot_data[1][rfoot_result[1][1]]
+    # # denoise y-axis
+    # new_rfoot_data[1][lfoot_result[0][0]:lfoot_result[0][1]] = new_rfoot_data[1][lfoot_result[0][0]]
+    # new_lfoot_data[1][rfoot_result[0][0]:rfoot_result[0][1]] = new_lfoot_data[1][rfoot_result[0][0]]
+    # new_lfoot_data[1][rfoot_result[1][0]:rfoot_result[1][1]] = new_lfoot_data[1][rfoot_result[1][0]]
+    #
+    # new_lfoot_data[1][lfoot_result[0][1]:] = new_lfoot_data[1][lfoot_result[0][1]]
+    # new_rfoot_data[1][rfoot_result[1][1]:] = new_rfoot_data[1][rfoot_result[1][1]]
 
     # for debug
     if isDebug:
         plt.clf()
-        plt.plot(new_lfoot_data[0])
-        plt.plot(new_rfoot_data[0])
-        plt.plot(new_neck_data[0])
+        plt.plot(new_lfoot_data[2])
+        plt.plot(new_rfoot_data[2])
+        plt.plot(new_neck_data[2])
         plt.show()
 
     # make output file
@@ -167,29 +167,27 @@ if __name__ == "__main__":
                     except:
                         print(files['lfoot'] + "is not found")
     else:
-        dataList = [['서승원', 'stair1_75', '4'], ['서승원', 'stair2_75', '2'], ['서승원', 'stair2_100', '7'],
-                    ['서승원', 'stair1_100', '3']]
-        # dataList = [['서승원', 'stair2_75', '2']]
-        for name, type, num in dataList:
-            files = {'lfoot': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/Lfootdata.txt',
-                     'rfoot': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/Rfootdata.txt',
-                     'neck': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/WaistData.txt'}
+        type_list = ['stair1_75_', 'stair1_100_', 'stair2_75_', 'stair2_100_']
+        method_list = ['ours', 'nagao', 'seo']
 
-            rotation_files = {'lfoot': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/LfootRotationData.txt',
-                              'rfoot': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/RfootRotationData.txt',
-                              'neck': 'foot_dataset/user3/' + name + '/' + type + '/' + num + '/WaistRotationData.txt'}
+        for type in type_list:
+            for method in method_list:
+                files = {'lfoot': 'experiment/' + type + method + '/Lfootdata.txt',
+                         'rfoot': 'experiment/' + type + method + '/Rfootdata.txt',
+                         'neck': 'experiment/' + type + method + '/WaistData.txt'}
 
-            output_files = {'lfoot': 'foot_dataset/output/experiment/' + type + '_real/Lfootdata.txt',
-                            'rfoot': 'foot_dataset/output/experiment/' + type + '_real/Rfootdata.txt',
-                            'neck': 'foot_dataset/output/experiment/' + type + '_real/WaistData.txt'}
+                rotation_files = {'lfoot': 'experiment/' + type + method + 'LfootRotationData.txt',
+                                  'rfoot': 'experiment/' + type + method + '/RfootRotationData.txt',
+                                  'neck': 'experiment/' + type + method + '/WaistRotationData.txt'}
 
-            output_rotation_files = {
-                'lfoot': 'foot_dataset/output/experiment/' + type + '_real/LfootRotationData.txt',
-                'rfoot': 'foot_dataset/output/experiment/' + type + '_real/RfootRotationData.txt',
-                'neck': 'foot_dataset/output/experiment/' + type + '_real/WaistRotationData.txt'}
+                output_files = {'lfoot': 'output/experiment/' + type + method + '/Lfootdata.txt',
+                                'rfoot': 'output/experiment/' + type + method + '/Rfootdata.txt',
+                                'neck': 'output/experiment/' + type + method + '/WaistData.txt'}
 
-            output_time_file = 'foot_dataset/output/experiment/' + type + '_real/TimeData.txt'
-            try:
+                output_rotation_files = {
+                    'lfoot': 'output/experiment/' + type + method + '/LfootRotationData.txt',
+                    'rfoot': 'output/experiment/' + type + method + '/RfootRotationData.txt',
+                    'neck': 'output/experiment/' + type + method + '/WaistRotationData.txt'}
+
+                output_time_file = 'output/experiment/' + type + method + '/TimeData.txt'
                 test(isDebug=False)
-            except:
-                print(files['lfoot'] + "is not found")
