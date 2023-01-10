@@ -1,0 +1,25 @@
+participant number,current block,block number,case number,first,second,chose
+3,stair1_75,0,0,nagao,ours,First
+3,stair1_75,0,1,seo,real,Second
+3,stair1_75,0,2,ours,real,First
+3,stair1_75,0,3,nagao,seo,Second
+3,stair1_75,0,4,real,ours,First
+3,stair1_75,0,5,real,seo,First
+3,stair1_75,0,6,ours,seo,First
+3,stair1_75,0,7,ours,nagao,Second
+3,stair1_75,0,8,seo,ours,First
+3,stair1_75,0,9,real,nagao,First
+3,stair1_75,0,10,seo,nagao,First
+3,stair1_75,0,11,nagao,real,Second
+3,stair1_75,0,12,ours,real,Second
+3,stair1_75,0,13,nagao,ours,First
+3,stair1_75,0,14,ours,nagao,Second
+3,stair1_75,0,15,real,ours,Second
+3,stair1_75,0,16,ours,seo,Second
+3,stair1_75,0,17,nagao,seo,Second
+3,stair1_75,0,18,seo,ours,First
+3,stair1_75,0,19,real,nagao,First
+3,stair1_75,0,20,seo,real,Second
+3,stair1_75,0,21,seo,nagao,First
+3,stair1_75,0,22,nagao,real,First
+3,stair1_75,0,23,real,seo,First

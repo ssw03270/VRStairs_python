@@ -16,7 +16,7 @@ file_list = os.listdir('./experiment2/')
 
 def analize():
     for file in file_list:
-        if file.split("_")[1] :
+        if int(file.split("_")[1]) > 3 :
             path = './experiment2/' + file
             data = pd.read_csv(path)
 
